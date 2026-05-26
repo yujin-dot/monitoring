@@ -1,0 +1,408 @@
+[
+  {
+    "step": 1,
+    "name": "대기장소",
+    "speed": 1.23,
+    "speedRange": [
+      0.7,
+      1.23
+    ],
+    "battery": 56,
+    "gps": 17,
+    "wifi": 179,
+    "pitch": -1.44,
+    "pitchRange": null,
+    "roll": -2.48,
+    "cargo": "닫힘",
+    "delay": 60000,
+    "mapRoute": "toPickup",
+    "videoFile": "1-대기장소.mov",
+    "alerts": [
+      {
+        "level": 1,
+        "msg": "디저트39-강남테헤란로점으로 이동합니다",
+        "delay": 5000,
+        "reverse": false,
+        "freeze": false
+      },
+      {
+        "level": 5,
+        "msg": "건널목 방향으로 정렬합니다.",
+        "delay": 40000,
+        "reverse": false,
+        "freeze": false
+      },
+      {
+        "level": 4,
+        "msg": "[자비에 송수신 네트워크 최대 속도 1Gbps 미만]",
+        "delay": 0,
+        "reverse": false,
+        "freeze": false
+      }
+    ],
+    "tasks": [],
+    "videoId": "5dd5a48b-e289-40d4-93ae-dd330b758113"
+  },
+  {
+    "step": 2,
+    "name": "출발지(디저트30-김남배) 이동",
+    "speed": 3,
+    "speedRange": [
+      3.04,
+      1.97
+    ],
+    "battery": 56,
+    "gps": 275,
+    "wifi": 186.4,
+    "pitch": -2.13,
+    "pitchRange": [
+      5,
+      6
+    ],
+    "roll": 3.38,
+    "cargo": "닫힘",
+    "delay": 30000,
+    "mapRoute": "toPickup",
+    "videoFile": "2-출발지 이동.mov",
+    "alerts": [
+      {
+        "level": 4,
+        "msg": "보행자가 인접하여 천천히 주행합니다.",
+        "delay": 12000,
+        "reverse": false,
+        "freeze": false
+      }
+    ],
+    "tasks": [],
+    "videoId": "d7f4a180-a14a-49ea-9cf1-bf9653ff81fe"
+  },
+  {
+    "step": 3,
+    "name": "사이드브레이크",
+    "speed": 3,
+    "speedRange": [
+      2.97,
+      3
+    ],
+    "battery": 56,
+    "gps": 180,
+    "wifi": 189.9,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "닫힘",
+    "delay": 21000,
+    "mapRoute": "toPickup",
+    "videoFile": "3-사이드브레이크 걸기.mov",
+    "alerts": [],
+    "tasks": [],
+    "videoId": "892ff087-71bf-41e0-a775-1285a6c31b61"
+  },
+  {
+    "step": 4,
+    "name": "출발지 도착",
+    "speed": 0,
+    "speedRange": [
+      1.77,
+      2
+    ],
+    "battery": 56,
+    "gps": 1403,
+    "wifi": 176,
+    "pitch": 3,
+    "pitchRange": null,
+    "roll": 2,
+    "cargo": "닫힘",
+    "delay": 60000,
+    "mapRoute": "toPickup",
+    "videoFile": "4-출발지도착.mov",
+    "alerts": [
+      {
+        "level": 1,
+        "msg": "디저트39-강남테헤란로점에 도착했습니다",
+        "delay": 25000,
+        "reverse": false,
+        "freeze": false
+      }
+    ],
+    "tasks": [],
+    "videoId": "be5b4297-446e-4f3b-b0ad-566552b86faf"
+  },
+  {
+    "step": 5,
+    "name": "적재함 열기",
+    "speed": 0,
+    "speedRange": null,
+    "battery": 56,
+    "gps": 32031,
+    "wifi": 100.2,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "열림",
+    "delay": 60000,
+    "mapRoute": "toPickup",
+    "videoFile": null,
+    "alerts": [],
+    "tasks": []
+  },
+  {
+    "step": 6,
+    "name": "물품 적재",
+    "speed": 0,
+    "speedRange": null,
+    "battery": 56,
+    "gps": 32031,
+    "wifi": 100.2,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "열림",
+    "delay": 60000,
+    "mapRoute": "toPickup",
+    "videoFile": null,
+    "alerts": [],
+    "tasks": []
+  },
+  {
+    "step": 7,
+    "name": "적재함 닫기",
+    "speed": 0,
+    "speedRange": null,
+    "battery": 56,
+    "gps": 32031,
+    "wifi": 121,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "닫힘",
+    "delay": 60000,
+    "mapRoute": "toPickup",
+    "videoFile": null,
+    "alerts": [],
+    "tasks": []
+  },
+  {
+    "step": 8,
+    "name": "목적지(강남대로 468 롯데빌딩) 이동",
+    "speed": 3.8,
+    "speedRange": [
+      3.8,
+      3
+    ],
+    "battery": 54,
+    "gps": 380,
+    "wifi": 321,
+    "pitch": 0,
+    "pitchRange": [
+      7,
+      8
+    ],
+    "roll": -5,
+    "cargo": "닫힘",
+    "delay": 60000,
+    "mapRoute": "toDestination",
+    "videoFile": null,
+    "alerts": [
+      {
+        "level": 1,
+        "msg": "강남구 강남대로 468 충림빌딩으로 이동합니다",
+        "delay": 0,
+        "reverse": false,
+        "freeze": false
+      },
+      {
+        "level": 2,
+        "msg": "전방에 주행 가능한 영역이 없습니다. 주변을 확인해주세요.",
+        "delay": 10000,
+        "reverse": false,
+        "freeze": false
+      },
+      {
+        "level": 0,
+        "msg": "넘어짐! 로봇을 즉시 확인해주세요.",
+        "delay": 20000,
+        "reverse": false,
+        "freeze": false
+      },
+      {
+        "level": 2,
+        "msg": "[역방향 주행] 로봇의 주행 방향을 확인해주세요.",
+        "delay": 50000,
+        "reverse": true,
+        "freeze": false
+      },
+      {
+        "level": 2,
+        "msg": "자동 긴급 정지가 발생했습니다",
+        "delay": 53000,
+        "reverse": false,
+        "freeze": true
+      },
+      {
+        "level": 5,
+        "msg": "[3D 장애물 메세지 유실] 주행 상태를 즉시 확인해주세요.",
+        "delay": 57000,
+        "reverse": false,
+        "freeze": false
+      }
+    ],
+    "tasks": [
+      {
+        "description": "게임패드 ON 클릭",
+        "expectedAction": "게임패드 버튼 클릭",
+        "successCriteria": "자동 긴급 정지 후 게임패드 ON → 3초 뒤 로봇이 정방향으로 복귀",
+        "failureCriteria": "게임패드를 클릭하지 않거나 30초 이상 방치"
+      }
+    ]
+  },
+  {
+    "step": 9,
+    "name": "목적지 도착",
+    "speed": 0,
+    "speedRange": null,
+    "battery": 50,
+    "gps": 380,
+    "wifi": 321,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "닫힘",
+    "delay": 60000,
+    "mapRoute": "toDestination",
+    "videoFile": null,
+    "alerts": [
+      {
+        "level": 1,
+        "msg": "강남구 강남대로 468 충림빌딩에 도착했습니다",
+        "delay": 0,
+        "reverse": false,
+        "freeze": false
+      }
+    ],
+    "tasks": []
+  },
+  {
+    "step": 10,
+    "name": "적재함 열기",
+    "speed": 0,
+    "speedRange": null,
+    "battery": 50,
+    "gps": 380,
+    "wifi": 321,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "열림",
+    "delay": 60000,
+    "mapRoute": "toDestination",
+    "videoFile": null,
+    "alerts": [],
+    "tasks": []
+  },
+  {
+    "step": 11,
+    "name": "고객 물품 수령",
+    "speed": 0,
+    "speedRange": null,
+    "battery": 50,
+    "gps": 380,
+    "wifi": 321,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "열림",
+    "delay": 60000,
+    "mapRoute": "toDestination",
+    "videoFile": null,
+    "alerts": [],
+    "tasks": []
+  },
+  {
+    "step": 12,
+    "name": "적재함 닫기",
+    "speed": 0,
+    "speedRange": null,
+    "battery": 50,
+    "gps": 380,
+    "wifi": 321,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "닫힘",
+    "delay": 60000,
+    "mapRoute": "toDestination",
+    "videoFile": null,
+    "alerts": [],
+    "tasks": []
+  },
+  {
+    "step": 13,
+    "name": "대기장소 이동",
+    "speed": 3.6,
+    "speedRange": [
+      3.6,
+      2.8
+    ],
+    "battery": 50,
+    "gps": 380,
+    "wifi": 321,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "닫힘",
+    "delay": 60000,
+    "mapRoute": "toStandby",
+    "videoFile": null,
+    "alerts": [
+      {
+        "level": 1,
+        "msg": "대기장소로 이동합니다",
+        "delay": 0,
+        "reverse": false,
+        "freeze": false
+      },
+      {
+        "level": 2,
+        "msg": "서버로부터 자율주행 정지 신호를 받았습니다.",
+        "delay": 8000,
+        "reverse": false,
+        "freeze": false
+      },
+      {
+        "level": 4,
+        "msg": "전복 위험이 있는 하강 경사로입니다. 천천히 주행합니다.",
+        "delay": 15000,
+        "reverse": false,
+        "freeze": false
+      }
+    ],
+    "tasks": []
+  },
+  {
+    "step": 14,
+    "name": "대기장소 도착",
+    "speed": 0,
+    "speedRange": null,
+    "battery": 48,
+    "gps": 380,
+    "wifi": 321,
+    "pitch": 0,
+    "pitchRange": null,
+    "roll": 0,
+    "cargo": "닫힘",
+    "delay": 60000,
+    "mapRoute": "toStandby",
+    "videoFile": null,
+    "alerts": [
+      {
+        "level": 1,
+        "msg": "대기장소에 도착했습니다",
+        "delay": 0,
+        "reverse": false,
+        "freeze": false
+      }
+    ],
+    "tasks": []
+  }
+]

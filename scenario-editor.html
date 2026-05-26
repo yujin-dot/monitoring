@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시나리오 타임라인 에디터</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --bg: #0f0f0f; --bg2: #1a1a1a; --bg3: #242424; --bg4: #2e2e2e;
+  --text: #e0e0e0; --text2: #999; --text3: #666;
+  --primary: #00BA7C; --primary-dim: rgba(0,186,124,0.15);
+  --warn: #F8914A; --warn-dim: rgba(248,145,74,0.15);
+  --danger: #E5484D; --danger-dim: rgba(229,72,77,0.15);
+  --info: #3B82F6; --info-dim: rgba(59,130,246,0.15);
+  --changed: #FFD700; --changed-dim: rgba(255,215,0,0.12);
+  --purple: #A855F7; --purple-dim: rgba(168,85,247,0.15);
+  --radius: 8px;
+}
+body { font-family:'Pretendard','Noto Sans KR',system-ui,sans-serif; background:var(--bg); color:var(--text); font-size:13px; line-height:1.5; }
+
+/* ── Header ── */
+.header { display:flex; align-items:center; justify-content:space-between; padding:16px 24px; border-bottom:1px solid var(--bg3); background:var(--bg2); position:sticky; top:0; z-index:100; }
+.header h1 { font-size:16px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.header h1 span { color:var(--primary); }
+.header-actions { display:flex; gap:8px; }
+.btn { padding:7px 14px; border-radius:6px; border:1px solid var(--bg4); background:var(--bg3); color:var(--text); font-size:12px; cursor:pointer; font-family:inherit; transition:all 0.15s; display:flex; align-items:center; gap:5px; }
+.btn:hover { background:var(--bg4); border-color:#555; }
+.btn-primary { background:var(--primary); color:#000; border-color:var(--primary); font-weight:600; }
+.btn-primary:hover { background:#00d48a; }
+.btn-warn { background:var(--warn); color:#000; border-color:var(--warn); font-weight:600; }
+
+/* ── Layout ── */
+.main { display:flex; height:calc(100vh - 57px); }
+.sidebar { width:260px; flex-shrink:0; border-right:1px solid var(--bg3); background:var(--bg2); overflow-y:auto; }
+.content { flex:1; overflow:auto; padding:20px; }
+
+/* ── Sidebar steps ── */
+.sidebar-title { padding:14px 16px 8px; font-size:11px; color:var(--text3); text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
+.step-item { display:flex; align-items:center; gap:10px; padding:10px 16px; cursor:pointer; border-left:3px solid transparent; transition:all 0.12s; }
+.step-item:hover { background:var(--bg3); }
+.step-item.active { background:var(--primary-dim); border-left-color:var(--primary); }
+.step-num { width:24px; height:24px; border-radius:50%; background:var(--bg4); display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; flex-shrink:0; }
+.step-item.active .step-num { background:var(--primary); color:#000; }
+.step-info { min-width:0; }
+.step-name { font-size:12px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.step-meta { font-size:10px; color:var(--text3); display:flex; gap:8px; }
+.step-meta .vid-dur { color:var(--info); }
+.step-meta .kf-count { color:var(--purple); }
+
+/* ── View tabs ── */
+.view-tabs { display:flex; gap:4px; margin-bottom:16px; background:var(--bg2); padding:4px; border-radius:8px; width:fit-content; }
+.view-tab { padding:6px 16px; border-radius:6px; cursor:pointer; font-size:12px; font-weight:500; color:var(--text2); transition:all 0.15s; }
+.view-tab:hover { color:var(--text); }
+.view-tab.active { background:var(--bg4); color:var(--text); }
+
+/* ── Timeline table ── */
+.timeline-table { width:100%; border-collapse:separate; border-spacing:0; }
+.timeline-table th { position:sticky; top:0; background:var(--bg2); padding:8px 12px; text-align:left; font-size:11px; color:var(--text2); font-weight:600; border-bottom:2px solid var(--bg3); white-space:nowrap; z-index:10; }
+.timeline-table th.param-col { min-width:100px; }
+.timeline-table th.step-col { text-align:center; min-width:90px; cursor:pointer; }
+.timeline-table th.step-col:hover { color:var(--primary); }
+.timeline-table th.step-col.active { color:var(--primary); background:var(--primary-dim); }
+.timeline-table td { padding:6px 12px; border-bottom:1px solid var(--bg3); font-size:12px; vertical-align:middle; }
+.timeline-table td.param-name { font-weight:600; color:var(--text2); background:var(--bg2); position:sticky; left:0; z-index:5; white-space:nowrap; }
+.timeline-table td.param-name .unit { font-weight:400; color:var(--text3); font-size:10px; margin-left:4px; }
+.timeline-table td.value-cell { text-align:center; position:relative; }
+.timeline-table td.value-cell.changed { background:var(--changed-dim); }
+.timeline-table td.value-cell.changed::after { content:''; position:absolute; top:2px; right:2px; width:5px; height:5px; border-radius:50%; background:var(--changed); }
+.timeline-table tr.group-header td { background:var(--bg3); font-weight:700; font-size:11px; color:var(--text2); padding:6px 12px; letter-spacing:0.3px; }
+
+/* ── Editable cell ── */
+.cell-val { display:inline-block; padding:2px 6px; border-radius:4px; min-width:40px; cursor:text; transition:background 0.1s; }
+.cell-val:hover { background:rgba(255,255,255,0.06); }
+.cell-val:focus { outline:none; background:rgba(0,186,124,0.15); box-shadow:0 0 0 1px var(--primary); }
+
+/* ── Range display ── */
+.range-val { font-size:10px; color:var(--text3); display:block; }
+
+/* ── Alerts section ── */
+.alert-badge { display:inline-flex; align-items:center; gap:3px; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:500; margin:1px 0; }
+.alert-badge.lv0 { background:var(--danger-dim); color:var(--danger); }
+.alert-badge.lv1 { background:var(--warn-dim); color:var(--warn); }
+.alert-badge.lv2 { background:var(--warn-dim); color:var(--warn); }
+.alert-badge.lv3 { background:rgba(156,163,175,0.15); color:#9ca3af; }
+.alert-badge.lv4 { background:rgba(156,163,175,0.15); color:#9ca3af; }
+.alert-badge.lv5 { background:rgba(96,165,250,0.15); color:#60a5fa; }
+.alert-time { font-size:9px; opacity:0.7; }
+
+/* ── Step detail panel ── */
+.detail-panel { background:var(--bg2); border-radius:var(--radius); border:1px solid var(--bg3); padding:20px; }
+.detail-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.detail-title { font-size:18px; font-weight:700; display:flex; align-items:center; gap:8px; }
+.detail-title .step-badge { background:var(--primary); color:#000; font-size:12px; font-weight:700; padding:2px 8px; border-radius:12px; }
+.detail-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:12px; margin-bottom:20px; }
+.detail-field { background:var(--bg3); border-radius:6px; padding:12px; }
+.detail-field label { display:block; font-size:10px; color:var(--text3); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
+.detail-field input, .detail-field select {
+  width:100%; background:var(--bg); border:1px solid var(--bg4); border-radius:4px;
+  color:var(--text); padding:6px 8px; font-size:13px; font-family:inherit;
+}
+.detail-field input:focus, .detail-field select:focus { outline:none; border-color:var(--primary); }
+.detail-field .changed-indicator { color:var(--changed); font-size:10px; float:right; }
+
+/* ── Alerts editor ── */
+.alerts-section { margin-top:20px; }
+.alerts-section h3 { font-size:13px; font-weight:600; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.alert-row { display:flex; gap:8px; align-items:center; padding:8px; background:var(--bg3); border-radius:6px; margin-bottom:6px; }
+.alert-row select { width:70px; background:var(--bg); border:1px solid var(--bg4); border-radius:4px; color:var(--text); padding:4px 6px; font-size:11px; }
+.alert-row input { flex:1; background:var(--bg); border:1px solid var(--bg4); border-radius:4px; color:var(--text); padding:4px 8px; font-size:12px; }
+.alert-row input:focus, .alert-row select:focus { outline:none; border-color:var(--primary); }
+.alert-row .delay-input { width:70px; text-align:right; }
+.alert-row .btn-sm { padding:3px 6px; font-size:10px; }
+.btn-add-alert { margin-top:6px; }
+
+/* ── Video info badge ── */
+.vid-badge { display:inline-flex; align-items:center; gap:4px; font-size:10px; padding:2px 8px; border-radius:10px; }
+.vid-badge.has-video { background:var(--info-dim); color:var(--info); }
+.vid-badge.no-video { background:rgba(100,100,100,0.15); color:var(--text3); }
+
+/* ── Keyframe timeline ── */
+.kf-section { margin-top:20px; }
+.kf-section h3 { font-size:13px; font-weight:600; margin-bottom:12px; display:flex; align-items:center; gap:6px; color:var(--purple); }
+
+.kf-timeline-wrap { background:var(--bg); border-radius:8px; padding:16px; border:1px solid var(--bg3); margin-bottom:16px; }
+.kf-timeline-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.kf-timeline-header .info { display:flex; gap:16px; font-size:11px; }
+.kf-timeline-header .info span { display:flex; align-items:center; gap:4px; }
+.kf-timeline-header .info .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.kf-timeline-header .info .dot.vid { background:var(--info); }
+.kf-timeline-header .info .dot.delay { background:var(--text3); }
+.kf-timeline-header .info .dot.alert { background:var(--warn); }
+.kf-timeline-header .info .dot.kf { background:var(--purple); }
+
+.kf-timeline-bar { position:relative; height:52px; background:var(--bg2); border-radius:6px; overflow:visible; cursor:crosshair; margin-bottom:4px; border:1px solid var(--bg3); }
+.kf-timeline-bar .vid-track { position:absolute; top:0; left:0; height:100%; background:var(--info-dim); border-radius:6px 0 0 6px; border-right:2px dashed var(--info); }
+.kf-timeline-bar .vid-label { position:absolute; top:4px; left:6px; font-size:9px; color:var(--info); font-weight:600; pointer-events:none; }
+.kf-timeline-bar .delay-label { position:absolute; top:4px; right:6px; font-size:9px; color:var(--text3); font-weight:500; pointer-events:none; }
+
+.kf-marker { position:absolute; top:0; width:2px; height:100%; cursor:pointer; z-index:5; }
+.kf-marker .kf-dot { position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:14px; height:14px; border-radius:50%; border:2px solid; }
+.kf-marker.type-alert .kf-dot { background:var(--warn-dim); border-color:var(--warn); }
+.kf-marker.type-kf .kf-dot { background:var(--purple-dim); border-color:var(--purple); }
+.kf-marker .kf-dot:hover { transform:translate(-50%, -50%) scale(1.3); }
+.kf-marker .kf-tooltip { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%); background:var(--bg4); border:1px solid var(--bg3); border-radius:6px; padding:6px 10px; font-size:10px; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity 0.15s; z-index:20; }
+.kf-marker:hover .kf-tooltip { opacity:1; }
+
+.kf-time-axis { display:flex; justify-content:space-between; font-size:9px; color:var(--text3); padding:0 2px; }
+
+/* ── Keyframe edit rows ── */
+.kf-list { margin-top:12px; }
+.kf-card { background:var(--bg3); border:1px solid var(--bg4); border-radius:8px; padding:12px; margin-bottom:8px; border-left:3px solid var(--purple); }
+.kf-card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.kf-card-header .kf-time-badge { background:var(--purple-dim); color:var(--purple); font-size:11px; font-weight:700; padding:2px 10px; border-radius:10px; }
+.kf-card-header .kf-time-input { width:80px; background:var(--bg); border:1px solid var(--bg4); border-radius:4px; color:var(--purple); padding:3px 6px; font-size:12px; font-weight:600; text-align:center; }
+.kf-card-header .kf-time-input:focus { outline:none; border-color:var(--purple); }
+.kf-card-fields { display:flex; flex-wrap:wrap; gap:8px; }
+.kf-field { display:flex; align-items:center; gap:4px; font-size:11px; }
+.kf-field label { color:var(--text2); min-width:50px; }
+.kf-field input { width:70px; background:var(--bg); border:1px solid var(--bg4); border-radius:4px; color:var(--text); padding:3px 6px; font-size:11px; }
+.kf-field input:focus { outline:none; border-color:var(--purple); }
+.kf-field select { background:var(--bg); border:1px solid var(--bg4); border-radius:4px; color:var(--text); padding:3px 6px; font-size:11px; }
+.kf-add-field { display:flex; gap:6px; align-items:center; margin-top:8px; padding-top:8px; border-top:1px solid var(--bg4); }
+.kf-add-field select { background:var(--bg); border:1px solid var(--bg4); border-radius:4px; color:var(--text); padding:3px 6px; font-size:11px; }
+
+/* ── Export modal ── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; }
+.modal { background:var(--bg2); border:1px solid var(--bg3); border-radius:12px; width:700px; max-height:80vh; display:flex; flex-direction:column; }
+.modal-header { padding:16px 20px; border-bottom:1px solid var(--bg3); display:flex; align-items:center; justify-content:space-between; }
+.modal-header h2 { font-size:15px; }
+.modal-body { padding:16px 20px; overflow-y:auto; flex:1; }
+.modal-body pre { background:var(--bg); border-radius:6px; padding:12px; font-size:11px; line-height:1.6; overflow-x:auto; white-space:pre; color:#b0e0c8; max-height:55vh; }
+.modal-footer { padding:12px 20px; border-top:1px solid var(--bg3); display:flex; justify-content:flex-end; gap:8px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--bg4); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:#555; }
+
+/* ── Summary bar ── */
+.summary-bar { display:flex; gap:16px; padding:12px 16px; background:var(--bg2); border-bottom:1px solid var(--bg3); font-size:11px; color:var(--text2); flex-wrap:wrap; }
+.summary-stat { display:flex; align-items:center; gap:4px; }
+.summary-stat strong { color:var(--text); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span>&#9881;</span> 시나리오 타임라인 에디터</h1>
+  <div class="header-actions">
+    <button class="btn" onclick="importFromFile()">&#128194; 파일 불러오기</button>
+    <button class="btn" onclick="showExport()">&#128196; JS 코드 내보내기</button>
+    <button class="btn btn-primary" onclick="copyExport()">&#128203; 클립보드 복사</button>
+  </div>
+</div>
+
+<div class="summary-bar" id="summary-bar"></div>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-title">시나리오 스텝 (12)</div>
+    <div id="step-list"></div>
+  </div>
+  <div class="content">
+    <div class="view-tabs">
+      <div class="view-tab active" data-view="timeline" onclick="switchView('timeline')">타임라인 매트릭스</div>
+      <div class="view-tab" data-view="detail" onclick="switchView('detail')">스텝 상세 편집</div>
+      <div class="view-tab" data-view="diff" onclick="switchView('diff')">변화량 비교</div>
+    </div>
+    <div id="view-timeline"></div>
+    <div id="view-detail" style="display:none"></div>
+    <div id="view-diff" style="display:none"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="export-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>JS 코드 내보내기</h2>
+      <button class="btn" onclick="closeExport()">&#10005; 닫기</button>
+    </div>
+    <div class="modal-body">
+      <pre id="export-code"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeExport()">닫기</button>
+      <button class="btn btn-primary" onclick="copyExport()">클립보드 복사</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".html,.js,.json" style="display:none" onchange="handleFileImport(event)">
+
+<script>
+// ── 영상 정보 ──
+const VIDEO_INFO = {
+  1:  { file:'1.mov',  duration:85.8, name:'대기장소' },
+  2:  { file:'2.mov',  duration:30.1, name:'출발지 이동' },
+  3:  { file:'3.mov',  duration:21.8, name:'사이드브레이크' },
+  4:  { file:'4.mov',  duration:29.2, name:'출발지 도착' },
+  5:  { file:'5.mov',  duration:16.4, name:'적재함 열기' },
+  6:  { file:'6.mov',  duration:6.4,  name:'적재함 닫기' },
+  7:  { file:'7.mov',  duration:21.6, name:'목적지 이동' },
+  8:  { file:'8.mov',  duration:6.6,  name:'목적지 도착' },
+  9:  { file:'9.mov',  duration:3.4,  name:'적재함 열기' },
+  10: { file:'10.mov', duration:1.2,  name:'적재함 닫기' },
+  11: { file:'11.mov', duration:22.5, name:'대기장소 이동' },
+  12: { file:'12.mov', duration:8.6,  name:'대기장소 도착' },
+};
+
+// ── 시나리오 데이터 ──
+let SCENARIO = [
+  { step:1,  name:'대기장소', speed:1.23, speedRange:[0.7,1.23], battery:56, gps:17, wifi:179, pitch:-1.44, roll:-2.48, cargo:'닫힘', delay:60000, mapRoute:'toPickup',
+    alerts:[
+      {level:5, msg:'디저트39-강남테헤란로점으로 이동합니다', delay:5000},
+      {level:4, msg:'건널목 방향으로 정렬합니다.', delay:40000},
+      {level:4, msg:'[자비에 송수신 네트워크 최대 속도 1Gbps 미만]', delay:0},
+    ],
+    keyframes:[] },
+  { step:2,  name:'출발지 이동', speed:3, speedRange:[3.04,1.97], battery:56, gps:275, wifi:186.4, pitch:-2.13, pitchRange:[5,6], roll:3.38, cargo:'닫힘', delay:30000, mapRoute:'toPickup',
+    alerts:[
+      {level:4, msg:'보행자가 인접하여 천천히 주행합니다.', delay:12000},
+    ],
+    keyframes:[] },
+  { step:3,  name:'사이드브레이크', speed:3, speedRange:[2.97,3], battery:56, gps:180, wifi:189.9, pitch:0, roll:0, cargo:'닫힘', delay:21000, mapRoute:'toPickup', alerts:[], keyframes:[] },
+  { step:4,  name:'출발지 도착', speed:0, speedRange:[1.77,2], battery:56, gps:1403, wifi:176, pitch:3, roll:2, cargo:'닫힘', delay:60000, mapRoute:'toPickup',
+    alerts:[
+      {level:5, msg:'디저트39-강남테헤란로점에 도착했습니다', delay:25000},
+    ],
+    keyframes:[] },
+  { step:5,  name:'적재함 열기', speed:0, battery:56, gps:32031, wifi:100.2, pitch:0, roll:0, alerts:[{level:5, msg:'적재함이 열렸습니다.', delay:0}], cargo:'열림', delay:60000, mapRoute:'toPickup', keyframes:[] },
+  { step:6,  name:'적재함 닫기', speed:0, battery:56, gps:32031, wifi:121, pitch:0, roll:0, alerts:[{level:5, msg:'적재함이 닫혔습니다.', delay:0}], cargo:'닫힘', delay:60000, mapRoute:'toPickup', keyframes:[] },
+  { step:7,  name:'목적지 이동', speed:3.8, speedRange:[3.8,3], battery:54, gps:380, wifi:321, pitch:0, pitchRange:[7,8], roll:-5, cargo:'닫힘', delay:60000, mapRoute:'toDestination',
+    alerts:[
+      {level:5, msg:'강남구 강남대로 468 충림빌딩으로 이동합니다', delay:0},
+      {level:2, msg:'전방에 주행 가능한 영역이 없습니다.', delay:10000},
+      {level:0, msg:'넘어짐! 로봇을 즉시 확인해주세요.', delay:20000},
+      {level:2, msg:'[역방향 주행] 로봇의 주행 방향을 확인해주세요.', delay:50000},
+      {level:2, msg:'자동 긴급 정지가 발생했습니다', delay:53000},
+      {level:3, msg:'[3D 장애물 메세지 유실] 주행 상태를 즉시 확인해주세요.', delay:57000},
+    ],
+    keyframes:[] },
+  { step:8,  name:'목적지 도착', speed:0, battery:50, gps:380, wifi:321, pitch:0, roll:0, cargo:'닫힘', delay:60000, mapRoute:'toDestination',
+    alerts:[
+      {level:5, msg:'강남구 강남대로 468 충림빌딩에 도착했습니다', delay:0},
+    ],
+    keyframes:[] },
+  { step:9,  name:'적재함 열기', speed:0, battery:50, gps:380, wifi:321, pitch:0, roll:0, alerts:[{level:5, msg:'적재함이 열렸습니다.', delay:0}], cargo:'열림', delay:60000, mapRoute:'toDestination', keyframes:[] },
+  { step:10, name:'적재함 닫기', speed:0, battery:50, gps:380, wifi:321, pitch:0, roll:0, alerts:[{level:5, msg:'적재함이 닫혔습니다.', delay:0}], cargo:'닫힘', delay:60000, mapRoute:'toDestination', keyframes:[] },
+  { step:11, name:'대기장소 이동', speed:3.6, speedRange:[3.6,2.8], battery:50, gps:380, wifi:321, pitch:0, roll:0, cargo:'닫힘', delay:60000, mapRoute:'toStandby',
+    alerts:[
+      {level:5, msg:'대기장소로 이동합니다', delay:0},
+      {level:2, msg:'서버로부터 자율주행 정지 신호를 받았습니다.', delay:8000},
+      {level:4, msg:'전복 위험이 있는 하강 경사로입니다.', delay:15000},
+    ],
+    keyframes:[] },
+  { step:12, name:'대기장소 도착', speed:0, battery:48, gps:380, wifi:321, pitch:0, roll:0, cargo:'닫힘', delay:60000, mapRoute:'toStandby',
+    alerts:[
+      {level:5, msg:'대기장소에 도착했습니다', delay:0},
+    ],
+    keyframes:[] },
+];
+
+let activeStep = 0;
+let currentView = 'timeline';
+
+// 키프레임에서 편집 가능한 파라미터
+const KF_PARAMS = [
+  { key:'speed', label:'속도', unit:'km/h', type:'number' },
+  { key:'battery', label:'배터리', unit:'%', type:'number' },
+  { key:'gps', label:'GPS', unit:'', type:'number' },
+  { key:'wifi', label:'WiFi', unit:'ms', type:'number' },
+  { key:'pitch', label:'Pitch', unit:'°', type:'number' },
+  { key:'roll', label:'Roll', unit:'°', type:'number' },
+  { key:'cargo', label:'적재함', unit:'', type:'select', options:['닫힘','열림'] },
+];
+
+const PARAMS = [
+  { group:'영상', items:[
+    { key:'_videoDur', label:'영상 길이', unit:'s', type:'readonly' },
+    { key:'delay', label:'스텝 지속시간', unit:'ms', type:'number' },
+    { key:'_kfCount', label:'키프레임', unit:'개', type:'readonly' },
+  ]},
+  { group:'주행', items:[
+    { key:'speed', label:'속도', unit:'km/h', type:'number' },
+    { key:'speedRange', label:'속도 범위', unit:'[min,max]', type:'range' },
+  ]},
+  { group:'센서', items:[
+    { key:'battery', label:'배터리', unit:'%', type:'number' },
+    { key:'gps', label:'GPS', unit:'', type:'number' },
+    { key:'wifi', label:'WiFi', unit:'ms', type:'number' },
+  ]},
+  { group:'자세', items:[
+    { key:'pitch', label:'Pitch', unit:'°', type:'number' },
+    { key:'pitchRange', label:'Pitch 범위', unit:'[min,max]', type:'range' },
+    { key:'roll', label:'Roll', unit:'°', type:'number' },
+  ]},
+  { group:'상태', items:[
+    { key:'cargo', label:'적재함', unit:'', type:'select', options:['닫힘','열림'] },
+    { key:'mapRoute', label:'경로', unit:'', type:'select', options:['toPickup','toDestination','toStandby'] },
+  ]},
+];
+
+const ALERT_LEVELS = {0:'Lv0 긴급 대응',1:'Lv1 문제 해결',2:'Lv2 개입 필요',3:'Lv3 주시 필요',4:'Lv4 정보성',5:'Lv5 출발/도착'};
+
+function getVideoInfo(stepNum){ return VIDEO_INFO[stepNum] || null; }
+function fmtDur(sec){ const m=Math.floor(sec/60); const s=(sec%60).toFixed(1); return m>0?`${m}:${s.padStart(4,'0')}`:`${s}s`; }
+function fmtMs(ms){ return (ms/1000).toFixed(1)+'s'; }
+
+// ── 초기화 ──
+function init(){
+  renderSidebar();
+  renderSummary();
+  renderTimeline();
+  renderDetail();
+  renderDiff();
+}
+
+// ── 사이드바 ──
+function renderSidebar(){
+  const el = document.getElementById('step-list');
+  el.innerHTML = SCENARIO.map((s,i) => {
+    const alertCount = (s.alerts||[]).length;
+    const kfCount = (s.keyframes||[]).length;
+    const vi = getVideoInfo(s.step);
+    const delayStr = fmtMs(s.delay);
+    const vidStr = vi ? fmtDur(vi.duration) : '';
+    return `<div class="step-item ${i===activeStep?'active':''}" onclick="selectStep(${i})">
+      <div class="step-num">${s.step}</div>
+      <div class="step-info">
+        <div class="step-name">${s.name}</div>
+        <div class="step-meta">
+          <span>${delayStr}</span>
+          ${vi?`<span class="vid-dur">&#127909; ${vidStr}</span>`:''}
+          ${alertCount?`<span>&#128276;${alertCount}</span>`:''}
+          ${kfCount?`<span class="kf-count">&#9670;${kfCount}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectStep(i){
+  activeStep = i;
+  renderSidebar();
+  if(currentView==='detail') renderDetail();
+  document.querySelectorAll('.timeline-table th.step-col').forEach((th,idx) => {
+    th.classList.toggle('active', idx===i);
+  });
+}
+
+// ── 요약 바 ──
+function renderSummary(){
+  const totalDelay = SCENARIO.reduce((s,v) => s+v.delay, 0);
+  const totalAlerts = SCENARIO.reduce((s,v) => s+(v.alerts||[]).length, 0);
+  const totalKf = SCENARIO.reduce((s,v) => s+(v.keyframes||[]).length, 0);
+  const movingSteps = SCENARIO.filter(s => s.speed > 0).length;
+  const stoppedSteps = SCENARIO.filter(s => s.speed === 0).length;
+  const totalVidDur = Object.values(VIDEO_INFO).reduce((s,v) => s+v.duration, 0);
+  document.getElementById('summary-bar').innerHTML = `
+    <div class="summary-stat">총 스텝: <strong>${SCENARIO.length}개</strong></div>
+    <div class="summary-stat">스텝 시간: <strong>${(totalDelay/1000/60).toFixed(1)}분</strong></div>
+    <div class="summary-stat">영상 합계: <strong>${fmtDur(totalVidDur)}</strong></div>
+    <div class="summary-stat">주행: <strong>${movingSteps}개</strong></div>
+    <div class="summary-stat">정지: <strong>${stoppedSteps}개</strong></div>
+    <div class="summary-stat">알림: <strong>${totalAlerts}개</strong></div>
+    <div class="summary-stat">키프레임: <strong>${totalKf}개</strong></div>
+    <div class="summary-stat">배터리 소모: <strong>${SCENARIO[0].battery - SCENARIO[SCENARIO.length-1].battery}%</strong></div>
+  `;
+}
+
+// ── 뷰 전환 ──
+function switchView(v){
+  currentView = v;
+  document.querySelectorAll('.view-tab').forEach(t => t.classList.toggle('active', t.dataset.view===v));
+  document.getElementById('view-timeline').style.display = v==='timeline'?'':'none';
+  document.getElementById('view-detail').style.display = v==='detail'?'':'none';
+  document.getElementById('view-diff').style.display = v==='diff'?'':'none';
+  if(v==='detail') renderDetail();
+  if(v==='diff') renderDiff();
+}
+
+// ── 가상 키 값 (영상/키프레임 행용) ──
+function getVirtualVal(s, key){
+  if(key === '_videoDur'){
+    const vi = getVideoInfo(s.step);
+    return vi ? vi.duration.toFixed(1) : '—';
+  }
+  if(key === '_kfCount'){
+    const kf = (s.keyframes||[]);
+    return kf.length > 0 ? kf.length : '—';
+  }
+  return s[key];
+}
+
+// ── 타임라인 매트릭스 ──
+function renderTimeline(){
+  let html = '<table class="timeline-table"><thead><tr><th class="param-col">파라미터</th>';
+  SCENARIO.forEach((s,i) => {
+    html += `<th class="step-col ${i===activeStep?'active':''}" onclick="selectStep(${i})">${s.step}. ${s.name}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  PARAMS.forEach(group => {
+    html += `<tr class="group-header"><td colspan="${SCENARIO.length+1}">${group.group}</td></tr>`;
+    group.items.forEach(param => {
+      html += `<tr><td class="param-name">${param.label}<span class="unit">${param.unit}</span></td>`;
+      SCENARIO.forEach((s,i) => {
+        const val = getVirtualVal(s, param.key);
+        const prev = i > 0 ? getVirtualVal(SCENARIO[i-1], param.key) : undefined;
+        const changed = i > 0 && JSON.stringify(val) !== JSON.stringify(prev);
+        const cls = changed ? 'changed' : '';
+
+        // 읽기 전용 가상 행
+        if(param.type === 'readonly'){
+          if(param.key === '_videoDur'){
+            const vi = getVideoInfo(s.step);
+            if(vi){
+              const ratio = (vi.duration / (s.delay/1000) * 100).toFixed(0);
+              html += `<td class="value-cell"><span class="vid-badge has-video">&#127909; ${vi.duration.toFixed(1)}s</span><br><span style="font-size:9px;color:var(--text3)">delay의 ${ratio}%</span></td>`;
+            } else {
+              html += `<td class="value-cell"><span class="vid-badge no-video">없음</span></td>`;
+            }
+          } else if(param.key === '_kfCount'){
+            const kf = (s.keyframes||[]);
+            if(kf.length > 0){
+              html += `<td class="value-cell" style="cursor:pointer" onclick="selectStep(${i});switchView('detail')"><span style="color:var(--purple);font-weight:600">&#9670; ${kf.length}개</span><br><span style="font-size:9px;color:var(--text3)">${kf.map(k=>fmtMs(k.time)).join(', ')}</span></td>`;
+            } else {
+              html += `<td class="value-cell" style="cursor:pointer" onclick="selectStep(${i});switchView('detail')"><span style="color:var(--text3)">—</span></td>`;
+            }
+          }
+        } else if(param.type === 'range'){
+          if(val){
+            html += `<td class="value-cell ${cls}"><span class="cell-val" contenteditable="true" data-step="${i}" data-key="${param.key}" onblur="onCellEdit(this)">${val[0]}~${val[1]}</span></td>`;
+          } else {
+            html += `<td class="value-cell ${cls}"><span class="cell-val" style="color:var(--text3)">—</span></td>`;
+          }
+        } else if(param.type === 'select'){
+          html += `<td class="value-cell ${cls}"><span class="cell-val" contenteditable="true" data-step="${i}" data-key="${param.key}" onblur="onCellEdit(this)">${val||'—'}</span></td>`;
+        } else {
+          html += `<td class="value-cell ${cls}"><span class="cell-val" contenteditable="true" data-step="${i}" data-key="${param.key}" onblur="onCellEdit(this)">${val!==undefined?val:'—'}</span></td>`;
+        }
+      });
+      html += '</tr>';
+    });
+  });
+
+  // 알림 행
+  html += `<tr class="group-header"><td colspan="${SCENARIO.length+1}">알림 이벤트</td></tr>`;
+  html += `<tr><td class="param-name">알림 목록</td>`;
+  SCENARIO.forEach((s,i) => {
+    const alerts = s.alerts || [];
+    if(alerts.length === 0){
+      html += `<td class="value-cell"><span style="color:var(--text3)">—</span></td>`;
+    } else {
+      html += `<td class="value-cell" style="text-align:left;padding:4px 6px;">`;
+      alerts.forEach(a => {
+        const timeStr = a.delay ? `+${(a.delay/1000)}s` : '즉시';
+        html += `<div class="alert-badge lv${a.level}"><span class="alert-time">${timeStr}</span> ${truncate(a.msg,18)}</div>`;
+      });
+      html += `</td>`;
+    }
+  });
+  html += '</tr></tbody></table>';
+  document.getElementById('view-timeline').innerHTML = html;
+}
+
+function truncate(s, max){ return s.length > max ? s.slice(0, max)+'...' : s; }
+
+// ── 셀 편집 ──
+function onCellEdit(el){
+  const i = parseInt(el.dataset.step);
+  const key = el.dataset.key;
+  if(!key || key.startsWith('_')) return; // 가상 키 무시
+  const raw = el.textContent.trim();
+  const param = PARAMS.flatMap(g=>g.items).find(p=>p.key===key);
+  if(!param) return;
+
+  if(param.type === 'range'){
+    const parts = raw.split(/[~,\s]+/).map(Number).filter(n=>!isNaN(n));
+    if(parts.length === 2) SCENARIO[i][key] = parts;
+    else if(parts.length === 0 || raw === '—') delete SCENARIO[i][key];
+  } else if(param.type === 'number'){
+    const n = parseFloat(raw);
+    if(!isNaN(n)) SCENARIO[i][key] = n;
+  } else {
+    SCENARIO[i][key] = raw === '—' ? undefined : raw;
+  }
+  renderTimeline(); renderSidebar(); renderSummary();
+}
+
+// ── 스텝 상세 편집 ──
+function renderDetail(){
+  const s = SCENARIO[activeStep];
+  const vi = getVideoInfo(s.step);
+  const kfs = s.keyframes || [];
+
+  let html = `<div class="detail-panel">
+    <div class="detail-header">
+      <div class="detail-title">
+        <span class="step-badge">Step ${s.step}</span> ${s.name}
+        ${vi ? `<span class="vid-badge has-video">&#127909; ${vi.file} (${vi.duration.toFixed(1)}s)</span>` : ''}
+      </div>
+    </div>`;
+
+  // ── 키프레임 타임라인 시각화 ──
+  const totalMs = s.delay;
+  const vidMs = vi ? vi.duration * 1000 : 0;
+  const barDuration = Math.max(totalMs, vidMs); // 바 전체 기준
+
+  html += `<div class="kf-timeline-wrap">
+    <div class="kf-timeline-header">
+      <span style="font-size:12px;font-weight:600;">타임라인</span>
+      <div class="info">
+        ${vi?`<span><span class="dot vid"></span>영상 ${vi.duration.toFixed(1)}s</span>`:''}
+        <span><span class="dot delay"></span>스텝 ${fmtMs(totalMs)}</span>
+        <span><span class="dot alert"></span>알림 ${(s.alerts||[]).length}개</span>
+        <span><span class="dot kf"></span>키프레임 ${kfs.length}개</span>
+      </div>
+    </div>
+    <div class="kf-timeline-bar" onclick="onTimelineClick(event, ${activeStep})" title="클릭하여 키프레임 추가">`;
+
+  // 영상 트랙
+  if(vi){
+    const vidPct = Math.min((vidMs / barDuration) * 100, 100);
+    html += `<div class="vid-track" style="width:${vidPct}%"></div>`;
+    html += `<div class="vid-label">&#127909; 영상 ${vi.duration.toFixed(1)}s</div>`;
+  }
+  html += `<div class="delay-label">스텝 ${fmtMs(totalMs)}</div>`;
+
+  // 알림 마커
+  (s.alerts||[]).forEach((a, ai) => {
+    const pct = (a.delay / barDuration) * 100;
+    const lvColors = {0:'var(--danger)',1:'var(--warn)',2:'var(--warn)',3:'#9ca3af',4:'#9ca3af',5:'#60a5fa'};
+    html += `<div class="kf-marker type-alert" style="left:${pct}%">
+      <div class="kf-dot" style="border-color:${lvColors[a.level]||'var(--warn)'};background:${lvColors[a.level]||'var(--warn)'}33;width:10px;height:10px;top:25%"></div>
+      <div class="kf-tooltip">&#128276; ${fmtMs(a.delay)} ${truncate(a.msg,25)}</div>
+    </div>`;
+  });
+
+  // 키프레임 마커
+  kfs.forEach((kf, ki) => {
+    const pct = (kf.time / barDuration) * 100;
+    const changedKeys = Object.keys(kf).filter(k=>k!=='time');
+    html += `<div class="kf-marker type-kf" style="left:${pct}%">
+      <div class="kf-dot" style="top:65%"></div>
+      <div class="kf-tooltip">&#9670; ${fmtMs(kf.time)}<br>${changedKeys.map(k=>`${k}: ${kf[k]}`).join(', ')}</div>
+    </div>`;
+  });
+
+  html += `</div>`; // bar end
+
+  // 시간 축
+  html += `<div class="kf-time-axis">`;
+  const ticks = 6;
+  for(let t=0; t<=ticks; t++){
+    const ms = (barDuration / ticks) * t;
+    html += `<span>${fmtMs(ms)}</span>`;
+  }
+  html += `</div></div>`; // axis + wrap end
+
+  // ── 파라미터 그리드 (영상 그룹 제외) ──
+  html += `<div class="detail-grid">`;
+  const detailParams = PARAMS.filter(g=>g.group!=='영상');
+  detailParams.forEach(group => {
+    group.items.forEach(param => {
+      const val = s[param.key];
+      const prev = activeStep > 0 ? SCENARIO[activeStep-1][param.key] : undefined;
+      const changed = activeStep > 0 && JSON.stringify(val) !== JSON.stringify(prev);
+      const changedMark = changed ? `<span class="changed-indicator">&#9679; 변경됨</span>` : '';
+
+      html += `<div class="detail-field">
+        <label>${param.label} ${param.unit} ${changedMark}</label>`;
+      if(param.type === 'select'){
+        html += `<select data-key="${param.key}" onchange="onDetailChange('${param.key}', this.value)">`;
+        param.options.forEach(o => { html += `<option value="${o}" ${val===o?'selected':''}>${o}</option>`; });
+        html += `</select>`;
+      } else if(param.type === 'range'){
+        const rval = val ? `${val[0]}, ${val[1]}` : '';
+        html += `<input type="text" value="${rval}" placeholder="min, max" onchange="onDetailRangeChange('${param.key}', this.value)">`;
+      } else {
+        html += `<input type="${param.type==='number'?'number':'text'}" value="${val!==undefined?val:''}" step="any" onchange="onDetailChange('${param.key}', this.value, '${param.type}')">`;
+      }
+      html += `</div>`;
+    });
+  });
+  html += `</div>`;
+
+  // ── 알림 편집 ──
+  html += `<div class="alerts-section"><h3>&#128276; 알림 이벤트 (${(s.alerts||[]).length}개)</h3>`;
+  (s.alerts||[]).forEach((a,ai) => {
+    html += `<div class="alert-row">
+      <select onchange="updateAlert(${activeStep},${ai},'level',this.value)">
+        ${Object.entries(ALERT_LEVELS).map(([k,v])=>`<option value="${k}" ${a.level==k?'selected':''}>${v}</option>`).join('')}
+      </select>
+      <input value="${escHtml(a.msg)}" onchange="updateAlert(${activeStep},${ai},'msg',this.value)" placeholder="알림 메시지">
+      <input class="delay-input" type="number" value="${a.delay||0}" step="1000" onchange="updateAlert(${activeStep},${ai},'delay',this.value)" title="지연시간(ms)">
+      <span style="font-size:10px;color:var(--text3)">ms</span>
+      <button class="btn btn-sm" onclick="removeAlert(${activeStep},${ai})" style="color:var(--danger)">&#10005;</button>
+    </div>`;
+  });
+  html += `<button class="btn btn-add-alert" onclick="addAlert(${activeStep})">+ 알림 추가</button></div>`;
+
+  // ── 키프레임 편집 ──
+  html += `<div class="kf-section">
+    <h3>&#9670; 키프레임 - 영상 중간 수치 변경 (${kfs.length}개)</h3>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:12px;">영상 재생 중 특정 시점에 센서 값을 변경합니다. 타임라인 바를 클릭하거나 아래에서 직접 추가하세요.</p>`;
+
+  if(kfs.length === 0){
+    html += `<div style="text-align:center;padding:20px;background:var(--bg3);border-radius:8px;color:var(--text3);font-size:12px;">
+      키프레임이 없습니다.<br>타임라인 바를 클릭하거나 아래 버튼으로 추가하세요.
+    </div>`;
+  } else {
+    html += `<div class="kf-list">`;
+    // 시간순 정렬
+    const sorted = kfs.map((kf,ki)=>({...kf, _idx:ki})).sort((a,b)=>a.time-b.time);
+    sorted.forEach(kf => {
+      const ki = kf._idx;
+      const changedKeys = Object.keys(kf).filter(k=>k!=='time'&&k!=='_idx');
+      html += `<div class="kf-card">
+        <div class="kf-card-header">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input class="kf-time-input" type="number" value="${kf.time}" step="1000" min="0" max="${totalMs}" onchange="updateKfTime(${activeStep},${ki},this.value)">
+            <span style="font-size:10px;color:var(--text3)">ms (${fmtMs(kf.time)})</span>
+          </div>
+          <button class="btn btn-sm" onclick="removeKf(${activeStep},${ki})" style="color:var(--danger);font-size:11px;">&#10005; 삭제</button>
+        </div>
+        <div class="kf-card-fields">`;
+
+      changedKeys.forEach(key => {
+        const param = KF_PARAMS.find(p=>p.key===key);
+        if(!param) return;
+        if(param.type === 'select'){
+          html += `<div class="kf-field"><label>${param.label}</label>
+            <select onchange="updateKfField(${activeStep},${ki},'${key}',this.value)">
+              ${param.options.map(o=>`<option value="${o}" ${kf[key]===o?'selected':''}>${o}</option>`).join('')}
+            </select>
+            <button class="btn btn-sm" onclick="removeKfField(${activeStep},${ki},'${key}')" style="color:var(--danger);padding:2px 4px;font-size:9px">&#10005;</button>
+          </div>`;
+        } else {
+          html += `<div class="kf-field"><label>${param.label}</label>
+            <input type="number" step="any" value="${kf[key]}" onchange="updateKfField(${activeStep},${ki},'${key}',this.value)">
+            <span style="font-size:9px;color:var(--text3)">${param.unit}</span>
+            <button class="btn btn-sm" onclick="removeKfField(${activeStep},${ki},'${key}')" style="color:var(--danger);padding:2px 4px;font-size:9px">&#10005;</button>
+          </div>`;
+        }
+      });
+
+      html += `</div>`;
+
+      // 파라미터 추가 드롭다운
+      const availableParams = KF_PARAMS.filter(p => !changedKeys.includes(p.key));
+      if(availableParams.length > 0){
+        html += `<div class="kf-add-field">
+          <span style="font-size:10px;color:var(--text3)">파라미터 추가:</span>
+          <select onchange="addKfField(${activeStep},${ki},this.value);this.value=''">
+            <option value="">선택...</option>
+            ${availableParams.map(p=>`<option value="${p.key}">${p.label}</option>`).join('')}
+          </select>
+        </div>`;
+      }
+
+      html += `</div>`; // kf-card end
+    });
+    html += `</div>`; // kf-list end
+  }
+
+  html += `<button class="btn" onclick="addKf(${activeStep})" style="margin-top:8px;border-color:var(--purple);color:var(--purple)">+ 키프레임 추가</button>`;
+  html += `</div>`; // kf-section end
+  html += `</div>`; // detail-panel end
+
+  document.getElementById('view-detail').innerHTML = html;
+}
+
+function escHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── 키프레임 편집 함수들 ──
+function onTimelineClick(e, si){
+  const bar = e.currentTarget;
+  const rect = bar.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const pct = x / rect.width;
+  const s = SCENARIO[si];
+  const vi = getVideoInfo(s.step);
+  const vidMs = vi ? vi.duration * 1000 : 0;
+  const barDuration = Math.max(s.delay, vidMs);
+  const timeMs = Math.round(pct * barDuration / 1000) * 1000; // 1초 단위 스냅
+
+  if(!s.keyframes) s.keyframes = [];
+  s.keyframes.push({ time: timeMs });
+  renderDetail(); renderTimeline(); renderSidebar(); renderSummary();
+}
+
+function addKf(si){
+  if(!SCENARIO[si].keyframes) SCENARIO[si].keyframes = [];
+  const s = SCENARIO[si];
+  // 기존 키프레임 중간 시간에 추가
+  const existing = s.keyframes.map(k=>k.time);
+  let newTime = Math.round(s.delay / 2 / 1000) * 1000;
+  while(existing.includes(newTime)) newTime += 1000;
+  s.keyframes.push({ time: newTime });
+  renderDetail(); renderTimeline(); renderSidebar(); renderSummary();
+}
+
+function removeKf(si, ki){
+  SCENARIO[si].keyframes.splice(ki, 1);
+  renderDetail(); renderTimeline(); renderSidebar(); renderSummary();
+}
+
+function updateKfTime(si, ki, val){
+  SCENARIO[si].keyframes[ki].time = parseInt(val) || 0;
+  renderDetail(); renderTimeline();
+}
+
+function updateKfField(si, ki, key, val){
+  const param = KF_PARAMS.find(p=>p.key===key);
+  if(param && param.type === 'number') val = parseFloat(val);
+  SCENARIO[si].keyframes[ki][key] = val;
+  renderDetail(); renderTimeline();
+}
+
+function removeKfField(si, ki, key){
+  delete SCENARIO[si].keyframes[ki][key];
+  // 시간만 남으면 유지 (빈 키프레임)
+  renderDetail(); renderTimeline();
+}
+
+function addKfField(si, ki, key){
+  if(!key) return;
+  const s = SCENARIO[si];
+  // 초기값은 스텝의 현재 값
+  SCENARIO[si].keyframes[ki][key] = s[key] !== undefined ? s[key] : 0;
+  renderDetail();
+}
+
+// ── 스텝 상세 값 변경 ──
+function onDetailChange(key, value, type){
+  if(type === 'number') value = parseFloat(value);
+  SCENARIO[activeStep][key] = value;
+  renderTimeline(); renderSidebar(); renderSummary();
+}
+function onDetailRangeChange(key, value){
+  const parts = value.split(/[,\s]+/).map(Number).filter(n=>!isNaN(n));
+  if(parts.length === 2) SCENARIO[activeStep][key] = parts;
+  else delete SCENARIO[activeStep][key];
+  renderTimeline();
+}
+function updateAlert(si, ai, field, val){
+  if(field === 'level' || field === 'delay') val = parseInt(val);
+  SCENARIO[si].alerts[ai][field] = val;
+  renderTimeline(); renderDetail();
+}
+function removeAlert(si, ai){
+  SCENARIO[si].alerts.splice(ai, 1);
+  renderTimeline(); renderDetail(); renderSummary();
+}
+function addAlert(si){
+  if(!SCENARIO[si].alerts) SCENARIO[si].alerts = [];
+  SCENARIO[si].alerts.push({level:4, msg:'', delay:0});
+  renderDetail();
+}
+
+// ── 변화량 비교 뷰 ──
+function renderDiff(){
+  const allKeys = ['speed','battery','gps','wifi','pitch','roll','cargo','delay','mapRoute'];
+  const labels = {speed:'속도',battery:'배터리',gps:'GPS',wifi:'WiFi',pitch:'Pitch',roll:'Roll',cargo:'적재함',delay:'지속시간',mapRoute:'경로'};
+  const units = {speed:'km/h',battery:'%',gps:'',wifi:'ms',pitch:'°',roll:'°',cargo:'',delay:'ms',mapRoute:''};
+
+  let html = `<table class="timeline-table"><thead><tr><th class="param-col">스텝 전환</th>`;
+  allKeys.forEach(k => { html += `<th style="text-align:center">${labels[k]}<span style="color:var(--text3);font-weight:400"> ${units[k]}</span></th>`; });
+  html += `<th style="text-align:center">알림</th><th style="text-align:center">키프레임</th></tr></thead><tbody>`;
+
+  for(let i = 1; i < SCENARIO.length; i++){
+    const prev = SCENARIO[i-1], curr = SCENARIO[i];
+    html += `<tr><td class="param-name" style="white-space:nowrap">${prev.step} &#8594; ${curr.step}<br><span style="font-weight:400;font-size:10px;color:var(--text3)">${prev.name} &#8594; ${curr.name}</span></td>`;
+    allKeys.forEach(k => {
+      const p = prev[k], c = curr[k];
+      const changed = JSON.stringify(p) !== JSON.stringify(c);
+      if(!changed){
+        html += `<td class="value-cell" style="text-align:center;color:var(--text3)">—</td>`;
+      } else if(typeof c === 'number' && typeof p === 'number'){
+        const diff = c - p;
+        const color = diff > 0 ? 'var(--primary)' : diff < 0 ? 'var(--danger)' : 'var(--text)';
+        const arrow = diff > 0 ? '&#9650;' : '&#9660;';
+        html += `<td class="value-cell changed" style="text-align:center"><span style="color:${color}">${arrow} ${diff>0?'+':''}${parseFloat(diff.toFixed(2))}</span><br><span style="font-size:10px;color:var(--text3)">${p} &#8594; ${c}</span></td>`;
+      } else {
+        html += `<td class="value-cell changed" style="text-align:center"><span style="font-size:11px">${p||'—'} &#8594; ${c||'—'}</span></td>`;
+      }
+    });
+    const prevA = (prev.alerts||[]).length, currA = (curr.alerts||[]).length;
+    html += `<td class="value-cell" style="text-align:center">${prevA} &#8594; ${currA}</td>`;
+    const prevK = (prev.keyframes||[]).length, currK = (curr.keyframes||[]).length;
+    html += `<td class="value-cell" style="text-align:center;color:var(--purple)">${prevK} &#8594; ${currK}</td>`;
+    html += `</tr>`;
+  }
+  html += '</tbody></table>';
+  document.getElementById('view-diff').innerHTML = html;
+}
+
+// ── 내보내기 ──
+function generateCode(){
+  let code = 'let SCENARIO = [\n';
+  SCENARIO.forEach((s, i) => {
+    code += `  { step:${s.step},  name:'${s.name}',`;
+    code += ` speed:${s.speed}`;
+    if(s.speedRange) code += `, speedRange:[${s.speedRange}]`;
+    code += `, battery:${s.battery}, gps:${s.gps}, wifi:${s.wifi}`;
+    code += `, pitch:${s.pitch}`;
+    if(s.pitchRange) code += `, pitchRange:[${s.pitchRange}]`;
+    code += `, roll:${s.roll}`;
+    code += `, cargo:'${s.cargo}', delay:${s.delay}, mapRoute:'${s.mapRoute}'`;
+
+    // 알림
+    const alerts = s.alerts || [];
+    if(alerts.length === 0){
+      code += `, alerts:[]`;
+    } else {
+      code += `,\n    alerts:[\n`;
+      alerts.forEach((a, ai) => {
+        code += `      {level:${a.level}, msg:'${a.msg.replace(/'/g,"\\'")}'`;
+        if(a.delay) code += `, delay:${a.delay}`;
+        if(a.reverse) code += `, reverse:true`;
+        if(a.freeze) code += `, freeze:true`;
+        code += `}`;
+        if(ai < alerts.length-1) code += ',';
+        code += '\n';
+      });
+      code += `    ]`;
+    }
+
+    // 키프레임
+    const kfs = s.keyframes || [];
+    if(kfs.length > 0){
+      code += `,\n    keyframes:[\n`;
+      kfs.sort((a,b)=>a.time-b.time).forEach((kf, ki) => {
+        const fields = Object.entries(kf).filter(([k])=>k!=='time');
+        code += `      {time:${kf.time}`;
+        fields.forEach(([k,v]) => {
+          code += typeof v === 'string' ? `, ${k}:'${v}'` : `, ${k}:${v}`;
+        });
+        code += `}`;
+        if(ki < kfs.length-1) code += ',';
+        code += '\n';
+      });
+      code += `    ]`;
+    }
+
+    code += ` },\n`;
+  });
+  code += '];\n';
+  return code;
+}
+
+function showExport(){
+  document.getElementById('export-code').textContent = generateCode();
+  document.getElementById('export-modal').classList.add('show');
+}
+function closeExport(){
+  document.getElementById('export-modal').classList.remove('show');
+}
+function copyExport(){
+  navigator.clipboard.writeText(generateCode()).then(() => {
+    const btn = document.querySelector('.btn-primary');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '&#10003; 복사됨!';
+    setTimeout(() => btn.innerHTML = orig, 1500);
+  });
+}
+
+// ── 파일 불러오기 ──
+function importFromFile(){ document.getElementById('file-input').click(); }
+function handleFileImport(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const text = ev.target.result;
+    try {
+      const match = text.match(/let\s+SCENARIO\s*=\s*\[([\s\S]*?)\];\s*\n/);
+      if(match){
+        const fn = new Function('return [' + match[1] + '];');
+        const imported = fn();
+        // keyframes 필드 보장
+        imported.forEach(s => { if(!s.keyframes) s.keyframes = []; });
+        SCENARIO = imported;
+        init();
+        alert('시나리오를 불러왔습니다! (' + SCENARIO.length + '개 스텝)');
+      } else {
+        alert('SCENARIO 배열을 찾을 수 없습니다.');
+      }
+    } catch(err){
+      alert('파싱 오류: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+init();
+</script>
+</body>
+</html>
