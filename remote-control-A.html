@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>원격제어 A안 (최종) — NCC</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  /* ─── Neubility Design System tokens ─── */
+  :root {
+    --primary-500: #00BA7C; --primary-400: #33C896; --primary-50: #E6F8F2;
+    --secondary-500: #426CFF;
+    --tertiary-400: #D87832; --tertiary-300: #F8914A;
+    --red-400: #FA5952; --red-500: #D7403B;
+    --mono-900:#000; --mono-800:#262626; --mono-700:#434343; --mono-600:#555;
+    --mono-500:#7B7B7B; --mono-400:#9D9D9D; --mono-300:#C4C4C4; --mono-200:#D9D9D9;
+    --mono-100:#E9E9E9; --mono-50:#F5F5F5;
+    --warning:#EF8A43;
+    --r-sm: 8px;   /* Radius/HSmall */
+    --r-xs: 4px;   /* Radius/HExtraSmall */
+    --sh-1: 0 2px 2px rgba(0,0,0,.1);
+    --sh-2: 0 4px 4px rgba(0,0,0,.1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Pretendard", -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+    color: var(--mono-800); background: var(--mono-50);
+    -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+  button { font-family: inherit; cursor: pointer; }
+  .app { display: flex; height: 100vh; }
+
+  /* ───────── Side rail ───────── */
+  .rail {
+    width: 52px; flex: 0 0 52px; background: #fff;
+    border-right: 1px solid var(--mono-100);
+    display: flex; flex-direction: column; align-items: center;
+    padding: 14px 0; gap: 6px;
+  }
+  .rail .expand { width: 28px; height: 28px; display: grid; place-items: center;
+    border: none; background: transparent; color: var(--mono-400); font-size: 18px; margin-bottom: 10px; }
+  .rail .nav-item { width: 36px; height: 36px; display: grid; place-items: center;
+    border-radius: 9px; color: var(--mono-400); border: none; background: transparent; position: relative; }
+  .rail .nav-item svg { width: 20px; height: 20px; }
+  .rail .nav-item.active { background: var(--primary-50); color: var(--primary-500); }
+  .rail .nav-item:hover:not(.active) { background: var(--mono-50); color: var(--mono-600); }
+  .rail .nav-item .dot { position: absolute; top: 6px; right: 6px; width: 6px; height: 6px; border-radius: 50%; background: var(--red-400); }
+  .rail .spacer { flex: 1; }
+
+  /* ───────── Main ───────── */
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* Header */
+  .header { padding: 12px 20px 10px; border-bottom: 1px solid var(--mono-100); background: var(--mono-50); }
+  .header-top { display: flex; align-items: center; gap: 12px; }
+  .header-top .title { font-size: 24px; font-weight: 700; color: var(--mono-800); white-space: nowrap; }
+  .header-top .code { font-size: 14px; color: var(--mono-500); font-weight: 400; }
+  .header-top .gray { font-size: 14px; color: var(--mono-500); }
+  .header-top .actions { margin-left: auto; display: flex; gap: 8px; }
+
+  .btn { height: 36px; padding: 0 14px; border-radius: var(--r-sm);
+    border: 1px solid var(--mono-200); background: #fff; color: var(--mono-800);
+    font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .btn:hover { background: #FAFAFA; }
+  .btn.danger { background: var(--red-400); border-color: var(--red-400); color: #fff; }
+  .btn.danger:hover { filter: brightness(.96); }
+  .btn.primary { background: var(--primary-500); border-color: var(--primary-500); color: #fff; }
+  .btn.primary:hover { filter: brightness(.96); }
+  .btn svg { width: 15px; height: 15px; }
+
+  .header-stats { margin-top: 7px; display: flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--mono-600); }
+  .header-stats .vsep { width: 1px; height: 11px; background: var(--mono-200); }
+  .header-stats b { font-weight: 600; color: var(--mono-800); }
+  .header-stats .warn { color: var(--tertiary-300); font-weight: 600; }
+
+  /* Content */
+  .content { flex: 1; display: flex; min-height: 0; }
+  .center { flex: 1; display: flex; flex-direction: column; padding: 14px 20px; min-width: 0; gap: 12px; overflow: hidden; }
+
+  /* ── Sequence stepper bar ── */
+  .stepper {
+    display: flex; align-items: stretch;
+    background: #fff; border: 1px solid var(--mono-200); border-radius: var(--r-sm);
+    overflow: hidden; min-height: 58px;
+  }
+  .stepper .close {
+    flex: 0 0 48px; display: grid; place-items: center;
+    border: none; border-right: 1px solid var(--mono-100); background: #fff; color: var(--mono-500);
+  }
+  .stepper .close svg { width: 18px; height: 18px; }
+  .stepper .steps { flex: 1; display: flex; align-items: center; }
+  .step { flex: 1; display: flex; align-items: center; gap: 10px; padding: 8px 18px; min-width: 0; position: relative; }
+  .step + .step::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 1px; background: var(--mono-100); }
+  .step .sdot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; background: var(--mono-300); }
+  .step.active .sdot { background: var(--primary-500); box-shadow: 0 0 0 3px var(--primary-50); }
+  .step .stext { min-width: 0; }
+  .step .l1 { font-size: 12px; color: var(--mono-500); line-height: 1.3; }
+  .step.active .l1 { color: var(--primary-500); font-weight: 600; }
+  .step .l2 { font-size: 13px; color: var(--mono-800); font-weight: 500; line-height: 1.3;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .step.done .l2, .step.pending .l2 { color: var(--mono-400); font-weight: 400; }
+  .step .sright { margin-left: auto; display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+  .chip-done { font-size: 12px; font-weight: 600; color: var(--mono-500); background: var(--mono-50);
+    border-radius: 999px; padding: 4px 12px; }
+  .btn-sm { height: 32px; padding: 0 14px; border-radius: var(--r-sm); font-size: 13px; font-weight: 600;
+    border: 1px solid var(--mono-200); background: #fff; color: var(--mono-700); }
+  .btn-sm.primary { background: var(--primary-500); border-color: var(--primary-500); color: #fff; }
+
+  /* toolbar */
+  .toolbar { display: flex; align-items: center; gap: 10px; }
+  .select { height: 36px; padding: 0 12px; border: 1px solid var(--mono-200); border-radius: var(--r-sm);
+    background: #fff; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--mono-800); font-weight: 500; }
+  .select svg.lead { width: 16px; height: 16px; color: var(--mono-600); }
+  .select .caret { color: var(--mono-400); font-size: 11px; margin-left: 2px; }
+  .toolbar .right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  .toggle-field { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--mono-600); }
+  .toolbar .vsep { width: 1px; height: 18px; background: var(--mono-200); }
+
+  /* switch */
+  .switch { width: 40px; height: 22px; border-radius: 999px; background: var(--mono-200); position: relative; border: none; transition: background .15s; flex: 0 0 auto; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.2); transition: left .15s; }
+  .switch.on { background: var(--primary-500); }
+  .switch.on::after { left: 20px; }
+
+  /* camera grid */
+  .cam-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; border-radius: var(--r-sm); overflow: hidden; }
+  .cam { position: relative; background: #1c1f22; overflow: hidden; }
+  .cam::before { content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(120% 90% at 30% 20%, rgba(255,255,255,.08), transparent 60%),
+      repeating-linear-gradient(115deg, rgba(255,255,255,.03) 0 22px, rgba(0,0,0,.05) 22px 44px),
+      linear-gradient(160deg, #2a2e33, #15181b); }
+  .cam .label { position: absolute; left: 8px; top: 7px; z-index: 2;
+    font-size: 11px; color: #fff; background: rgba(0,0,0,.45); padding: 2px 7px; border-radius: var(--r-xs); }
+  .cam .live { position: absolute; right: 8px; top: 7px; z-index: 2; display: flex; align-items: center; gap: 4px;
+    font-size: 10px; color: #fff; }
+  .cam .live i { width: 6px; height: 6px; border-radius: 50%; background: var(--red-400); display: inline-block; }
+  .cam .camicon { position: absolute; inset: 0; display: grid; place-items: center; color: rgba(255,255,255,.10); }
+  .cam .camicon svg { width: 54px; height: 54px; }
+
+  /* ───────── Right panel ───────── */
+  .panel { width: 300px; flex: 0 0 300px; border-left: 1px solid var(--mono-100); background: var(--mono-50);
+    display: flex; flex-direction: column; min-height: 0; }
+  .panel-body { flex: 1 1 auto; overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 14px; }
+  .panel-body > * { flex-shrink: 0; }
+  .panel-body::-webkit-scrollbar { width: 8px; }
+  .panel-body::-webkit-scrollbar-thumb { background: var(--mono-200); border-radius: 4px; }
+  /* 지도 — 패널 하단 고정 (항상 보임) */
+  .panel-map { flex: 0 0 auto; padding: 12px 16px 16px; border-top: 1px solid var(--mono-100); background: var(--mono-50); }
+  .row { display: flex; align-items: center; justify-content: space-between; }
+  .row .k { font-size: 14px; color: var(--mono-600); }
+  .row .v { font-size: 14px; color: var(--mono-800); font-weight: 600; }
+  .section-title { font-size: 14px; color: var(--mono-600); }
+
+  /* tilt */
+  .tilt { display: flex; gap: 10px; }
+  .tilt .tile { flex: 1; padding: 10px 6px;
+    display: flex; align-items: center; gap: 10px; }
+  .tilt .tile .icon { position: relative; width: 52px; height: 52px; flex: 0 0 auto; }
+  .tilt .tile .icon svg { position: absolute; inset: 0; width: 52px; height: 52px; display: block; }
+  .tilt .tile .icon .dial-bg { z-index: 0; }
+  .tilt .tile .meta .lbl { font-size: 12px; color: var(--mono-500); }
+  .tilt .tile .meta .val { font-size: 16px; font-weight: 700; color: var(--mono-800); margin-top: 2px; }
+
+  .divider { height: 1px; background: var(--mono-100); }
+
+  /* segmented */
+  .seg { display: inline-flex; background: var(--mono-100); border-radius: 7px; padding: 2px; }
+  .seg button { border: none; background: transparent; color: var(--mono-400); font-size: 13px; font-weight: 700; padding: 4px 16px; border-radius: 5px; }
+  .seg button.active { background: #fff; color: var(--mono-800); box-shadow: var(--sh-1); }
+
+  .btn.ghost-sm { height: 30px; padding: 0 14px; font-size: 13px; }
+
+  /* ── audio / 송출 controls ── */
+  .text-send { display: flex; gap: 8px; }
+  .text-send input { flex: 1; min-width: 0; height: 36px; border: 1px solid var(--mono-200);
+    border-radius: var(--r-sm); padding: 0 12px; font-size: 13px; font-family: inherit; outline: none; color: var(--mono-800); }
+  .text-send input::placeholder { color: var(--mono-400); }
+  .text-send input:focus { border-color: var(--primary-500); }
+  .text-send .btn { flex: 0 0 auto; }
+  .btn.block { width: 100%; height: 32px; justify-content: center; }
+  .btn.block svg { width: 16px; height: 16px; color: var(--mono-600); }
+  .volume { display: flex; align-items: center; justify-content: center; gap: 16px; padding: 2px 0; }
+  .volume button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--mono-200);
+    background: #fff; color: var(--mono-600); font-size: 17px; display: grid; place-items: center; line-height: 1; }
+  .volume button:hover { background: #FAFAFA; }
+  .volume .lbl { font-size: 14px; color: var(--mono-800); font-weight: 500; min-width: 64px; text-align: center; }
+
+  /* map */
+  .map { width: 100%; height: 300px; border-radius: var(--r-sm); overflow: hidden; position: relative;
+    background: #EAEEF0; flex: 0 0 auto; border: 1px solid var(--mono-100); }
+  .map svg.base { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .map .ov { position: absolute; z-index: 2; }
+  .map .badge { left: 10px; top: 10px; display: flex; align-items: center; gap: 6px;
+    background: var(--primary-500); color: #fff; font-size: 12px; font-weight: 700;
+    padding: 5px 10px; border-radius: 999px; box-shadow: var(--sh-1); }
+  .map .badge svg { width: 13px; height: 13px; }
+  .map .dist { right: 12px; top: 14px; font-size: 12px; font-weight: 700; color: var(--mono-700);
+    background: rgba(255,255,255,.85); padding: 3px 8px; border-radius: var(--r-xs); }
+  .map .compass { right: 10px; top: 46px; width: 34px; height: 34px; border-radius: 50%;
+    background: #fff; box-shadow: var(--sh-1); display: grid; place-items: center; border: none; color: var(--red-400); }
+  .map .locate { right: 10px; bottom: 10px; width: 34px; height: 34px; border-radius: 50%;
+    background: var(--primary-500); box-shadow: var(--sh-1); display: grid; place-items: center; border: none; color: #fff; }
+  .map .compass svg, .map .locate svg { width: 18px; height: 18px; }
+  .map .robot { left: 50%; top: 52%; transform: translate(-50%,-50%); z-index: 3; }
+  .map .robot .ring { width: 30px; height: 30px; border-radius: 50%; background: var(--secondary-500);
+    border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); display: grid; place-items: center; color: #fff; }
+  .map .robot .ring svg { width: 16px; height: 16px; }
+
+  /* ── Dialog ── */
+  .dim { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .dim.open { display: flex; }
+  .dialog { width: 343px; background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+  .dialog h3 { font-size: 18px; font-weight: 700; color: var(--mono-800); }
+  .dialog p { font-size: 14px; color: var(--mono-600); line-height: 1.55; margin-top: 10px; }
+  .dialog .acts { display: flex; gap: 8px; margin-top: 20px; }
+  .dialog .acts button { flex: 1; height: 44px; border-radius: var(--r-sm); font-size: 15px; font-weight: 600; border: none; }
+  .dialog .acts .cancel { background: var(--mono-50); color: var(--mono-700); }
+  .dialog .acts .confirm { background: var(--primary-500); color: #fff; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Side rail -->
+  <nav class="rail">
+    <button class="expand" title="메뉴 펼치기">&rsaquo;</button>
+    <button class="nav-item active" title="모니터링">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+    <button class="nav-item" title="로봇 관리">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 13h.01M15 13h.01"/></svg></button>
+    <button class="nav-item" title="사이트 관리">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.2-7-11a7 7 0 0114 0c0 5.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></button>
+    <button class="nav-item" title="무선 충전기 관리">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/></svg></button>
+    <button class="nav-item" title="주행 경로 및 좌표 관리">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="6" r="3"/><path d="M12 9v6M9 21l3-6 3 6"/></svg></button>
+    <button class="nav-item" title="음원 관리">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg></button>
+    <button class="nav-item" title="알림센터">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></button>
+    <button class="nav-item" title="순찰 리포트">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h6"/></svg></button>
+    <button class="nav-item" title="회원 관리">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></button>
+    <button class="nav-item" title="다중 모니터링">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="8" height="7" rx="1"/><rect x="13" y="4" width="8" height="7" rx="1"/><rect x="3" y="14" width="8" height="6" rx="1"/><rect x="13" y="14" width="8" height="6" rx="1"/></svg></button>
+    <button class="nav-item" title="다중 드라이빙">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="11" rx="3"/><circle cx="8" cy="13" r="1.5"/><path d="M14 11h4M14 14h4"/></svg></button>
+    <div class="spacer"></div>
+    <button class="nav-item" title="지역 / 시간대">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg></button>
+    <button class="nav-item" title="고객센터"><span class="dot"></span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 113.5 2.3c-.8.4-1 .9-1 1.7M12 17h.01"/></svg></button>
+  </nav>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="header">
+      <div class="header-top">
+        <span class="title">11호기 개발용(Product)#2</span>
+        <span class="code">NAAAKA1-1220902005</span>
+        <span class="gray">1호기</span>
+        <div class="actions">
+          <button class="btn danger">연결 해제</button>
+          <button class="btn">시나리오 새로고침</button>
+          <button class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg>알림 보기</button>
+          <button class="btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-2.9 1.2V21a2 2 0 11-4 0v-.1A1.7 1.7 0 006 19.4l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00-1.2-2.9H2a2 2 0 110-4h.1A1.7 1.7 0 003.3 6l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3H8a1.7 1.7 0 001-1.5V2a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9V8a1.7 1.7 0 001.5 1H22a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>로봇 설정</button>
+        </div>
+      </div>
+      <div class="header-stats">
+        <span>샷시(좌) <b>31°C</b> (우) <b>31°C</b></span>
+        <span class="vsep"></span>
+        <span>WIFI <span class="warn">주의 200.5ms</span></span>
+        <span class="vsep"></span>
+        <span>현재 속도 <b>0.00m/s</b></span>
+        <span class="vsep"></span>
+        <span>설정 회전속도 <b>5</b></span>
+        <span class="vsep"></span>
+        <span>설정 속도 <b>5</b></span>
+        <span class="vsep"></span>
+        <span>충전량 <b>100%</b></span>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="center">
+        <!-- Sequence stepper -->
+        <div class="stepper">
+          <button class="close" id="btnClose" title="임무 종료">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+          </button>
+          <div class="steps">
+            <div class="step done">
+              <span class="sdot"></span>
+              <div class="stext"><div class="l1">대기 장소에서</div><div class="l2">(출발지명)(으)로 이동</div></div>
+              <div class="sright"><span class="chip-done">완료</span></div>
+            </div>
+            <div class="step active">
+              <span class="sdot"></span>
+              <div class="stext"><div class="l1">(출발지명)에서</div><div class="l2">{목적지명}(으)로 이동</div></div>
+              <div class="sright">
+                <button class="btn-sm primary" id="btnArrive">도착 처리</button>
+                <button class="btn-sm" id="btnNext">다음 단계</button>
+              </div>
+            </div>
+            <div class="step pending">
+              <span class="sdot"></span>
+              <div class="stext"><div class="l1">(목적지명)에서</div><div class="l2">대기 장소로 이동</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- toolbar -->
+        <div class="toolbar">
+          <div class="select">
+            <svg class="lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>
+            밝기 1 <span class="caret">▾</span>
+          </div>
+          <div class="select">
+            <svg class="lead" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>
+            화질 중간 <span class="caret">▾</span>
+          </div>
+          <div class="right">
+            <div class="toggle-field"><span>프론트 카메라</span><button class="switch" aria-label="프론트 카메라"></button></div>
+            <span class="vsep"></span>
+            <div class="toggle-field"><span>자동 긴급 정지</span><button class="switch" aria-label="자동 긴급 정지"></button></div>
+          </div>
+        </div>
+
+        <!-- single camera feed (테스트 영상) -->
+        <div class="cam-grid" style="grid-template-columns:1fr;grid-template-rows:1fr;">
+          <div class="cam">
+            <span class="label">전방</span><span class="live"><i></i>LIVE</span>
+            <span class="camicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+            <video id="cam-video" autoplay muted playsinline
+              style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#1c1f22;z-index:1;"></video>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right panel -->
+      <aside class="panel">
+       <div class="panel-body">
+        <div class="row">
+          <span class="k">임무 받기</span>
+          <button class="switch on" aria-label="임무 받기"></button>
+        </div>
+
+        <div>
+          <div class="section-title" style="margin-bottom:8px;">주행 경사</div>
+          <div class="tilt">
+            <div class="tile">
+              <div class="icon">
+                <svg class="dial-bg" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle cx="27" cy="27" r="27" fill="white"/>
+                  <path d="M27 7L27 47" stroke="#E9E9E9" stroke-width="0.341772"/>
+                  <path d="M7 27H47" stroke="#E9E9E9" stroke-width="0.341772"/>
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M27 3.41772C13.9759 3.41772 3.41772 13.9759 3.41772 27C3.41772 40.0241 13.9759 50.5823 27 50.5823C40.0241 50.5823 50.5823 40.0241 50.5823 27C50.5823 13.9759 40.0241 3.41772 27 3.41772ZM0 27C0 12.0883 12.0883 0 27 0C41.9117 0 54 12.0883 54 27C54 41.9117 41.9117 54 27 54C12.0883 54 0 41.9117 0 27Z" fill="#E9E9E9"/>
+                  <path d="M49.628 31.142C49.6459 31.0438 49.6631 30.9452 49.6798 30.8465L53.6159 31.5406L53.5638 31.836L49.628 31.142Z" fill="#FF8980"/>
+                  <path d="M4.32021 30.8465C4.33683 30.9452 4.35408 31.0438 4.37196 31.142L0.436189 31.836L0.384094 31.5406L4.32021 30.8465Z" fill="#FF8980"/>
+                  <path d="M4.37203 22.8576C4.35415 22.9558 4.3369 23.0543 4.32028 23.1531L0.384164 22.459L0.436259 22.1636L4.37203 22.8576Z" fill="#FF8980"/>
+                  <path d="M49.6797 23.1531C49.6631 23.0543 49.6458 22.9558 49.6279 22.8576L53.5637 22.1636L53.6158 22.459L49.6797 23.1531Z" fill="#FF8980"/>
+                  <path d="M49.8125 29.952C49.8252 29.8529 49.8373 29.7537 49.8487 29.6542L53.8173 30.1415L53.7808 30.4393L49.8125 29.952Z" fill="#FFB689"/>
+                  <path d="M4.15171 29.6542C4.16313 29.7537 4.1752 29.8529 4.18789 29.952L0.219666 30.4393L0.183105 30.1415L4.15171 29.6542Z" fill="#FFB689"/>
+                  <path d="M4.18793 24.0478C4.17523 24.1468 4.16317 24.2461 4.15174 24.3456L0.18327 23.8583L0.219831 23.5605L4.18793 24.0478Z" fill="#FFB689"/>
+                  <path d="M49.8487 24.3456C49.8373 24.2461 49.8252 24.1468 49.8125 24.0478L53.7806 23.5605L53.8172 23.8583L49.8487 24.3456Z" fill="#FFB689"/>
+                  <path d="M49.9995 27.1496C49.9998 27.0997 50 27.0498 50 26.9998C50 26.9497 49.9998 26.8996 49.9995 26.8496H54V27.1496H49.9995Z" fill="#C4C4C4"/>
+                  <path d="M4.00048 27.1496H0V26.8496H4.00048C4.00016 26.8996 4 26.9497 4 26.9998C4 27.0498 4.00016 27.0997 4.00048 27.1496Z" fill="#C4C4C4"/>
+                </svg>
+                <svg viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Pitch">
+                  <rect x="17.0436" y="20.1143" width="19.8857" height="16.4571" fill="#C4C4C4"/>
+                  <rect x="16.3579" y="29.7144" width="21.2571" height="2.05714" rx="1.02857" fill="#C4C4C4"/>
+                  <rect x="22.5296" y="33.8286" width="6.17143" height="6.17143" rx="3.08571" transform="rotate(90 22.5296 33.8286)" fill="#C4C4C4"/>
+                  <rect x="36.9296" y="33.8286" width="6.17143" height="6.17143" rx="3.08571" transform="rotate(90 36.9296 33.8286)" fill="#C4C4C4"/>
+                  <path d="M17.0436 18.7429C17.0436 17.228 18.2716 16 19.7864 16H34.1864C35.7013 16 36.9293 17.228 36.9293 18.7429V20.1143H17.0436V18.7429Z" fill="#C4C4C4"/>
+                  <path d="M17.0436 22.5146C17.9902 22.5146 18.7573 23.2819 18.7574 24.2285V25.6006C18.7573 26.5472 17.9903 27.3145 17.0436 27.3145V26.9717H16.7008V22.8574H17.0436V22.5146Z" fill="#C4C4C4" stroke="white" stroke-width="0.685714"/>
+                  <path d="M41.9998 27.0005L52.6665 27.0005" stroke="#9D9D9D" stroke-width="0.7"/>
+                  <path d="M1.99976 27.0005H12.6664" stroke="#9D9D9D" stroke-width="0.7"/>
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M6 27.5H0V26.5H6V27.5Z" fill="#9D9D9D"/>
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M54 27.5H48V26.5H54V27.5Z" fill="#9D9D9D"/>
+                  <path d="M54 27C54 41.9117 41.9117 54 27 54C12.0883 54 0 41.9117 0 27H54Z" fill="#D9D9D9" fill-opacity="0.5"/>
+                  <path d="M13 20V24L9 22L13 20Z" fill="#7B7B7B"/>
+                  <rect x="13" y="21.5" width="2" height="1" fill="#7B7B7B"/>
+                </svg>
+              </div>
+              <div class="meta"><div class="lbl">Pitch(Y)</div><div class="val">0°</div></div>
+            </div>
+            <div class="tile">
+              <div class="icon">
+                <svg class="dial-bg" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <circle cx="27" cy="27" r="27" fill="white"/>
+                  <path d="M27 7L27 47" stroke="#E9E9E9" stroke-width="0.341772"/>
+                  <path d="M7 27H47" stroke="#E9E9E9" stroke-width="0.341772"/>
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M27 3.41772C13.9759 3.41772 3.41772 13.9759 3.41772 27C3.41772 40.0241 13.9759 50.5823 27 50.5823C40.0241 50.5823 50.5823 40.0241 50.5823 27C50.5823 13.9759 40.0241 3.41772 27 3.41772ZM0 27C0 12.0883 12.0883 0 27 0C41.9117 0 54 12.0883 54 27C54 41.9117 41.9117 54 27 54C12.0883 54 0 41.9117 0 27Z" fill="#E9E9E9"/>
+                  <path d="M49.628 31.142C49.6459 31.0438 49.6631 30.9452 49.6798 30.8465L53.6159 31.5406L53.5638 31.836L49.628 31.142Z" fill="#FF8980"/>
+                  <path d="M4.32021 30.8465C4.33683 30.9452 4.35408 31.0438 4.37196 31.142L0.436189 31.836L0.384094 31.5406L4.32021 30.8465Z" fill="#FF8980"/>
+                  <path d="M4.37203 22.8576C4.35415 22.9558 4.3369 23.0543 4.32028 23.1531L0.384164 22.459L0.436259 22.1636L4.37203 22.8576Z" fill="#FF8980"/>
+                  <path d="M49.6797 23.1531C49.6631 23.0543 49.6458 22.9558 49.6279 22.8576L53.5637 22.1636L53.6158 22.459L49.6797 23.1531Z" fill="#FF8980"/>
+                  <path d="M49.8125 29.952C49.8252 29.8529 49.8373 29.7537 49.8487 29.6542L53.8173 30.1415L53.7808 30.4393L49.8125 29.952Z" fill="#FFB689"/>
+                  <path d="M4.15171 29.6542C4.16313 29.7537 4.1752 29.8529 4.18789 29.952L0.219666 30.4393L0.183105 30.1415L4.15171 29.6542Z" fill="#FFB689"/>
+                  <path d="M4.18793 24.0478C4.17523 24.1468 4.16317 24.2461 4.15174 24.3456L0.18327 23.8583L0.219831 23.5605L4.18793 24.0478Z" fill="#FFB689"/>
+                  <path d="M49.8487 24.3456C49.8373 24.2461 49.8252 24.1468 49.8125 24.0478L53.7806 23.5605L53.8172 23.8583L49.8487 24.3456Z" fill="#FFB689"/>
+                  <path d="M49.9995 27.1496C49.9998 27.0997 50 27.0498 50 26.9998C50 26.9497 49.9998 26.8996 49.9995 26.8496H54V27.1496H49.9995Z" fill="#C4C4C4"/>
+                  <path d="M4.00048 27.1496H0V26.8496H4.00048C4.00016 26.8996 4 26.9497 4 26.9998C4 27.0498 4.00016 27.0997 4.00048 27.1496Z" fill="#C4C4C4"/>
+                </svg>
+                <svg viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Roll">
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M19.8207 16C18.3059 16 17.0778 17.228 17.0778 18.7428L17.0778 20.114L17.0778 20.1142L17.0778 29.7727C16.6783 29.9138 16.3921 30.2949 16.3921 30.7427C16.3921 31.1906 16.6783 31.5716 17.0778 31.7128L17.0778 34.0122C16.668 34.2494 16.3923 34.6926 16.3923 35.2001L16.3923 38.6286C16.3923 39.3861 17.0063 40.0001 17.7637 40.0001C18.5211 40.0001 19.1351 39.386 19.1351 38.6286L19.1351 36.571L34.9062 36.571L34.9062 38.6286C34.9062 39.3861 35.5203 40.0001 36.2777 40.0001C37.0351 40.0001 37.6491 39.386 37.6491 38.6286L37.6491 35.2001C37.6491 34.6925 37.3733 34.2493 36.9633 34.0122L36.9633 31.7127C37.3628 31.5715 37.649 31.1905 37.649 30.7427C37.649 30.2949 37.3628 29.9139 36.9633 29.7727L36.9633 20.1142L36.9633 20.114L36.9633 18.7428C36.9633 17.228 35.7353 16 34.2205 16L19.8207 16Z" fill="#C4C4C4"/>
+                  <circle cx="23.9349" cy="24.9145" r="2.39997" fill="#C4C4C4" stroke="white" stroke-width="0.685707"/>
+                  <circle cx="30.1067" cy="24.9145" r="2.39997" fill="#C4C4C4" stroke="white" stroke-width="0.685707"/>
+                  <circle cx="23.2493" cy="24.2287" r="0.685707" fill="white"/>
+                  <circle cx="29.4206" cy="24.2287" r="0.685707" fill="white"/>
+                  <path d="M41.9998 26.9165L52.6665 26.9165" stroke="#9D9D9D" stroke-width="0.7"/>
+                  <path d="M1.99976 26.9165H12.6664" stroke="#9D9D9D" stroke-width="0.7"/>
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M6 27.416H0V26.416H6V27.416Z" fill="#9D9D9D"/>
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M54 27.416H48V26.416H54V27.416Z" fill="#9D9D9D"/>
+                  <path d="M54 26.916C54 41.8277 41.9117 53.916 27 53.916C12.0883 53.916 0 41.8277 0 26.916H54Z" fill="#D9D9D9" fill-opacity="0.5"/>
+                </svg>
+              </div>
+              <div class="meta"><div class="lbl">Roll(X)</div><div class="val">7°</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row"><span class="k">컨트롤모드</span><span class="v">자율 주행</span></div>
+        <div class="row"><span class="k">GPS 수신</span><span class="v">24</span></div>
+        <div class="row"><span class="k">최근 업데이트</span><span class="v">2024. 01. 01 11:30:25</span></div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <span class="k">사이드 브레이크</span>
+          <div class="seg"><button class="active">OFF</button><button>ON</button></div>
+        </div>
+        <div class="row">
+          <span class="k">게임패드</span>
+          <div class="seg"><button class="active">OFF</button><button>ON</button></div>
+        </div>
+        <div class="row">
+          <span class="k">헤드램프</span>
+          <div class="seg"><button class="active">OFF</button><button>ON</button></div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="row">
+          <span class="k">적재함</span>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span class="v" style="color:var(--mono-500)">닫힘</span>
+            <button class="btn ghost-sm">열기</button>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- 송출 controls -->
+        <div class="text-send">
+          <input type="text" placeholder="문장 입력 송출" />
+          <button class="btn">문장 송출</button>
+        </div>
+        <button class="btn block">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 013 3v6a3 3 0 01-6 0V5a3 3 0 013-3z"/><path d="M5 11a7 7 0 0014 0M12 18v4"/></svg>
+          마이크 송출
+        </button>
+        <button class="btn block">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
+          음원 선택
+        </button>
+        <button class="btn block">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+          음성 정지
+        </button>
+        <div class="volume">
+          <button id="volDown" aria-label="음량 내리기">−</button>
+          <span class="lbl">음량 <span id="volVal">99</span></span>
+          <button id="volUp" aria-label="음량 올리기">+</button>
+        </div>
+       </div><!-- /panel-body -->
+
+       <!-- Active route map — 하단 고정 -->
+       <div class="panel-map">
+        <div class="map">
+          <svg class="base" viewBox="0 0 284 300" preserveAspectRatio="xMidYMid slice">
+            <rect width="284" height="300" fill="#EAEEF0"/>
+            <!-- blocks -->
+            <rect x="8" y="14" width="70" height="86" rx="3" fill="#F3F5F6"/>
+            <rect x="200" y="10" width="78" height="90" rx="3" fill="#F3F5F6"/>
+            <rect x="14" y="196" width="80" height="104" rx="3" fill="#F3F5F6"/>
+            <rect x="196" y="204" width="84" height="96" rx="3" fill="#EAF3E9"/>
+            <!-- roads -->
+            <rect x="118" y="0" width="20" height="300" fill="#fff"/>
+            <rect x="0" y="120" width="284" height="16" fill="#fff"/>
+            <rect x="0" y="194" width="284" height="12" fill="#fff"/>
+            <!-- route (green dashed) -->
+            <path d="M128 300 L128 165 Q128 155 134 152 L150 144" fill="none" stroke="#00BA7C" stroke-width="6" stroke-linecap="round" stroke-dasharray="2 9"/>
+            <path d="M150 144 L150 8" fill="none" stroke="#00BA7C" stroke-width="6" stroke-linecap="round" stroke-dasharray="2 9"/>
+            <!-- poi dots -->
+            <circle cx="48" cy="150" r="5" fill="#F8914A"/>
+            <circle cx="92" cy="72" r="5" fill="#FA5952"/>
+            <circle cx="218" cy="152" r="5" fill="#F8914A"/>
+            <circle cx="70" cy="246" r="5" fill="#9D9D9D"/>
+          </svg>
+          <div class="ov badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg>준수 45분 00초</div>
+          <div class="ov dist">4.8km</div>
+          <button class="ov compass" title="방위">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3 9-3-2-3 2 3-9z"/><path d="M12 22l-3-9 3 2 3-2-3 9z" fill="#9D9D9D"/></svg>
+          </button>
+          <button class="ov locate" title="현재 위치">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
+          </button>
+          <div class="ov robot"><div class="ring"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l7 14-7-4-7 4 7-14z"/></svg></div></div>
+        </div>
+       </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- Dialogs -->
+<div class="dim" id="dim">
+  <div class="dialog" id="dialog">
+    <h3 id="dlgTitle">임무를 종료할까요?</h3>
+    <p id="dlgBody">뉴비에게 주어진 임무가 종료되며 임무 대기 상태로 바뀌고 제자리에 정지합니다</p>
+    <div class="acts">
+      <button class="cancel" id="dlgCancel">취소</button>
+      <button class="confirm" id="dlgConfirm">확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // toggles
+  document.querySelectorAll('.switch').forEach(s => s.addEventListener('click', () => s.classList.toggle('on')));
+  // segmented
+  document.querySelectorAll('.seg').forEach(seg => seg.querySelectorAll('button').forEach(b =>
+    b.addEventListener('click', () => { seg.querySelectorAll('button').forEach(x => x.classList.remove('active')); b.classList.add('active'); })));
+  // rail nav
+  document.querySelectorAll('.rail .nav-item').forEach(n => n.addEventListener('click', () => {
+    document.querySelectorAll('.rail .nav-item').forEach(x => x.classList.remove('active')); n.classList.add('active'); }));
+
+  // dialogs (from Figma spec)
+  const dim = document.getElementById('dim');
+  const dlgTitle = document.getElementById('dlgTitle');
+  const dlgBody = document.getElementById('dlgBody');
+  const dialogs = {
+    end:    { title: '임무를 종료할까요?', body: '뉴비에게 주어진 임무가 종료되며 임무 대기 상태로 바뀌고 제자리에 정지합니다' },
+    arrive: { title: '도착 처리할까요?', body: '현재 단계를 도착 처리하고 다음 단계로 이동합니다' },
+    next:   { title: '다음 단계로 넘어갈까요?', body: '현재 단계를 건너뛰고 다음 단계를 진행합니다' },
+  };
+  function openDialog(key) { const d = dialogs[key]; dlgTitle.textContent = d.title; dlgBody.textContent = d.body; dim.classList.add('open'); }
+  function closeDialog() { dim.classList.remove('open'); }
+  document.getElementById('btnClose').addEventListener('click', () => openDialog('end'));
+  document.getElementById('btnArrive').addEventListener('click', () => openDialog('arrive'));
+  document.getElementById('btnNext').addEventListener('click', () => openDialog('next'));
+  document.getElementById('dlgCancel').addEventListener('click', closeDialog);
+  document.getElementById('dlgConfirm').addEventListener('click', closeDialog);
+  dim.addEventListener('click', e => { if (e.target === dim) closeDialog(); });
+
+  // volume (0–100)
+  const volVal = document.getElementById('volVal');
+  let vol = 99;
+  const setVol = v => { vol = Math.max(0, Math.min(100, v)); volVal.textContent = vol; };
+  document.getElementById('volUp').addEventListener('click', () => setVol(vol + 1));
+  document.getElementById('volDown').addEventListener('click', () => setVol(vol - 1));
+</script>
+
+<!-- ── A/B 테스트 계측 (neubie-ab) ── -->
+<script src="/neubie-ab/assign.js"></script>
+<script src="/neubie-ab/config.shared.js"></script>
+<script src="/neubie-ab/neubie-ab.js"></script>
+<!-- PostHog (공식 스니펫, self-init) -->
+<script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="$i ji init en nn Ar tn an Yi capture calculateEventProperties dn register register_once register_for_session unregister unregister_for_session gn getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync mn identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException addExceptionStep captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty fn hn createPersonProfile setInternalOrTestUser pn Ji opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing un debug Dr vn getPageViewId captureTraceFeedback captureTraceMetric Zi".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_gJCAuVDZUnrhDdm4bZ7RwgWOIQ4JEOE2urE77sKd7qT', {
+        api_host: 'https://us.i.posthog.com',
+        defaults: '2026-05-30',
+        person_profiles: 'identified_only',
+    })
+</script>
+<script>
+  // A 페이지 = control_A 고정. (B 페이지는 init() — ?layout 자동판별)
+  NeubieAB.init({ variant: 'control_A' });
+  // 인테이크(설문) 응답이 모이면 호출:
+  // NeubieAB.identify({ age_band:'30s', license:'Y', driving_1yr:'Y',
+  //   ops_experience:'Y', ops_months:'6mo-1yr', urban_delivery_exp:'N', job_role:'OP' });
+
+  // ── 카메라 영상: ?scenario=N 있으면 해당 시나리오(계측 포함), 없으면 기본 피드 ──
+  (function () {
+    var cam = document.getElementById('cam-video');
+    if (!cam) return;
+    var sc = parseInt(new URLSearchParams(location.search).get('scenario'), 10);
+    if (sc) {
+      NeubieAB.startTrial(sc);
+      NeubieAB.loadScenarioVideo(cam, sc); // S3=배정된 taxi/bump, 그 외=scenario.video
+      NeubieAB.bindVideo(cam, sc);         // video-trigger 시나리오는 트리거 시점 자동 markStimulus
+    } else {
+      cam.src = (window.NeubieConfig && NeubieConfig.defaultVideo) || ''; // 시나리오 미지정 → 기본 피드
+    }
+    if (cam.load) cam.load();
+    if (cam.play) cam.play().catch(function () {});
+  })();
+  // 응답(T3) 훅은 [횡단하기]·[주행 불가능] 등 액션 버튼 구현 후 연결
+  //   (예: btnArrive.addEventListener('click', () => NeubieAB.markResponse({})); )
+</script>
+</body>
+</html>

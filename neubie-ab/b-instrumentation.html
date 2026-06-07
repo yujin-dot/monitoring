@@ -1,0 +1,43 @@
+<!-- ── A/B 테스트 계측 (neubie-ab) — B1/B2는 ?layout 자동판별 ──
+     sync-public.js 가 public/index.html 의 </body> 직전에 이 블록을 주입한다.
+     B(index.html) 재export 시 계측이 사라지므로 export 후 `node neubie-ab/sync-public.js` 실행. -->
+<script src="/neubie-ab/assign.js"></script>
+<script src="/neubie-ab/config.shared.js"></script>
+<script src="/neubie-ab/neubie-ab.js"></script>
+<!-- PostHog (공식 스니펫, self-init) -->
+<script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="$i ji init en nn Ar tn an Yi capture calculateEventProperties dn register register_once register_for_session unregister unregister_for_session gn getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync mn identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException addExceptionStep captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty fn hn createPersonProfile setInternalOrTestUser pn Ji opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing un debug Dr vn getPageViewId captureTraceFeedback captureTraceMetric Zi".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_gJCAuVDZUnrhDdm4bZ7RwgWOIQ4JEOE2urE77sKd7qT', {
+        api_host: 'https://us.i.posthog.com',
+        defaults: '2026-05-30',
+        person_profiles: 'identified_only',
+    })
+</script>
+<script>
+  // ?layout=vertical → B1 / horizontal → B2 (config.variantByLayout)
+  NeubieAB.init();
+  // NeubieAB.identify({ age_band:'30s', license:'Y', driving_1yr:'Y',
+  //   ops_experience:'Y', ops_months:'6mo-1yr', urban_delivery_exp:'N', job_role:'OP' });
+
+  // ── 테스트 빌드: 기존 12스텝 여정 엔진/UI 끄고 테스트 영상 표시 ──
+  (function () {
+    var cam = document.getElementById('cam-video');
+    if (!cam) return;
+    try { state.paused = true; state.autoAdvance = false; } catch (e) {} // 레거시 여정 엔진 정지
+    document.body.classList.add('ab-testmode');                          // 레거시 여정 UI 숨김
+    var _st = document.createElement('style');
+    _st.textContent = '.ab-testmode #scenario-panel,.ab-testmode #left-alert-toast,.ab-testmode #cam-alert{display:none!important;}';
+    document.head.appendChild(_st);
+    var sc = parseInt(new URLSearchParams(location.search).get('scenario'), 10);
+    if (sc) {                              // ?scenario=N → 해당 시나리오 + 계측
+      NeubieAB.startTrial(sc);
+      NeubieAB.loadScenarioVideo(cam, sc); // S3=배정 taxi/bump, 그 외=config.scenarios[n].video
+      NeubieAB.bindVideo(cam, sc);         // video-trigger(S2·S3·S6) 트리거 시점 자동 markStimulus
+    } else {                               // 미지정 → 기본 피드
+      cam.src = (window.NeubieConfig && NeubieConfig.defaultVideo) || '';
+    }
+    if (cam.load) cam.load();
+    if (cam.play) cam.play().catch(function () {});
+  })();
+  // 응답(T3) 훅은 [횡단하기]·[주행 불가능] 등 액션 버튼 구현 후 연결
+</script>

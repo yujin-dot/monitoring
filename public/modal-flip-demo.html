@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>모달 자동 flip 데모</title>
+<style>
+  :root {
+    --frame-max: 700px;   /* 프레임 최대 너비 */
+    --modal-w: 244px;     /* 모달 너비 */
+    --threshold: 180px;   /* 프레임 가장자리까지 남는 공간이 이 값 이하면 바깥으로 */
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: 'Noto Sans KR', sans-serif;
+    background: #ECECEC;
+    padding: 40px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .hint { color: #666; font-size: 13px; text-align: center; }
+
+  /* 프레임: 최대 700px, 화면 좁아지면 같이 줄어듦 */
+  #frame {
+    position: relative;          /* 안쪽 모달의 기준 */
+    width: 100%;
+    max-width: var(--frame-max);
+    height: 420px;
+    background: #FFFFFF;
+    border: 1px solid #DADADA;
+    border-radius: 8px;
+    overflow: hidden;            /* 프레임 밖으로 넘치는 콘텐츠는 잘림 */
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  #frame-header {
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    border-bottom: 1px solid #EEE;
+    font-weight: 600;
+  }
+
+  #open-btn {
+    border: none;
+    background: #2D6CDF;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+
+  #frame-body { padding: 16px; color: #444; font-size: 14px; }
+
+  /* 모달 (공통) */
+  #modal {
+    position: absolute;          /* 기본: 프레임 안쪽 기준 */
+    top: 60px;
+    width: var(--modal-w);
+    background: #fff;
+    border: 1px solid #D0D0D0;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+    padding: 16px;
+    display: none;               /* 닫힘 */
+    z-index: 1000;
+  }
+  #modal.open { display: block; }
+
+  /* 안쪽: 프레임 우측에 붙임 */
+  #modal.inside {
+    position: absolute;
+    right: 16px;
+    left: auto;
+  }
+
+  /* 바깥: 프레임 왼쪽 옆. overflow:hidden을 피하려고 body 기준 fixed */
+  #modal.outside {
+    position: fixed;
+    /* top/left 는 JS가 프레임 rect 기준으로 계산해서 채움 */
+  }
+
+  #modal h4 { margin: 0 0 8px; font-size: 15px; }
+  #modal p  { margin: 0 0 12px; font-size: 13px; color: #555; line-height: 1.5; }
+  #modal .pos-tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: #EEF3FF;
+    color: #2D6CDF;
+  }
+  #modal-close {
+    border: 1px solid #CCC;
+    background: #fff;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  #status {
+    font-size: 12px;
+    color: #888;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
+</head>
+<body>
+  <div class="hint">
+    창 너비를 줄여보세요. 프레임 폭이 <b>424px(=244+180) 이하</b>가 되면<br/>
+    모달이 프레임 <b>왼쪽 바깥</b>으로 이동합니다.
+  </div>
+
+  <div id="frame">
+    <div id="frame-header">
+      <span>프레임 (max 700px)</span>
+      <button id="open-btn">모달 열기</button>
+    </div>
+    <div id="frame-body">
+      이 영역은 <code>overflow: hidden</code> 입니다.
+    </div>
+  </div>
+
+  <div id="status"></div>
+
+  <!-- 모달은 frame 밖(body 직계)에 둬서 outside일 때 잘리지 않게 함 -->
+  <div id="modal">
+    <span class="pos-tag" id="pos-tag">inside</span>
+    <h4>모달 제목</h4>
+    <p>너비 244px 모달입니다. 남은 공간에 따라 안/바깥으로 자동 배치됩니다.</p>
+    <button id="modal-close">닫기</button>
+  </div>
+
+<script>
+  const MODAL_W   = 244;
+  const THRESHOLD = 180;
+  const FLIP_AT   = MODAL_W + THRESHOLD;   // 424px 이하면 바깥
+
+  const frame   = document.getElementById('frame');
+  const modal   = document.getElementById('modal');
+  const openBtn = document.getElementById('open-btn');
+  const closeBtn= document.getElementById('modal-close');
+  const posTag  = document.getElementById('pos-tag');
+  const status  = document.getElementById('status');
+
+  let isOpen = false;
+
+  function positionModal() {
+    if (!isOpen) return;
+
+    const rect = frame.getBoundingClientRect();
+    const frameW = rect.width;
+    const goOutside = frameW <= FLIP_AT;
+
+    if (goOutside) {
+      // 프레임 왼쪽 바깥 (body 기준 fixed)
+      modal.classList.remove('inside');
+      modal.classList.add('outside');
+      modal.style.left = (rect.left - MODAL_W) + 'px';
+      modal.style.top  = (rect.top + 60) + 'px';
+      posTag.textContent = 'outside (왼쪽 바깥)';
+    } else {
+      // 프레임 안쪽 우측
+      modal.classList.remove('outside');
+      modal.classList.add('inside');
+      modal.style.left = '';
+      modal.style.top  = '';
+      posTag.textContent = 'inside (프레임 안)';
+    }
+
+    status.textContent =
+      `프레임 폭: ${Math.round(frameW)}px / 임계값: ${FLIP_AT}px → ` +
+      (goOutside ? '바깥' : '안쪽');
+  }
+
+  // 안쪽 모달은 frame의 자식이어야 absolute 기준이 맞으므로,
+  // inside일 땐 frame 안으로, outside일 땐 body로 옮긴다.
+  function placeModalParent(outside) {
+    const target = outside ? document.body : frame;
+    if (modal.parentElement !== target) target.appendChild(modal);
+  }
+
+  function render() {
+    if (!isOpen) return;
+    const frameW = frame.getBoundingClientRect().width;
+    placeModalParent(frameW <= FLIP_AT);
+    positionModal();
+  }
+
+  function openModal() {
+    isOpen = true;
+    modal.classList.add('open');
+    render();
+  }
+  function closeModal() {
+    isOpen = false;
+    modal.classList.remove('open');
+  }
+
+  openBtn.addEventListener('click', () => isOpen ? closeModal() : openModal());
+  closeBtn.addEventListener('click', closeModal);
+  window.addEventListener('resize', render);
+  window.addEventListener('scroll', positionModal, true);
+</script>
+</body>
+</html>

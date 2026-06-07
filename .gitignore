@@ -3,3 +3,6 @@
 *.swo
 *~
 .vercel
+
+.claude/
+test/
