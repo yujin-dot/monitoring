@@ -1,5 +1,5 @@
-<!-- ── A/B 테스트 계측 (neubie-ab) — B1/B2는 ?layout 자동판별 ──
-     sync-public.js 가 public/index.html 의 </body> 직전에 이 블록을 주입한다.
+<!-- NEUBIE-AB:BEGIN  A/B 테스트 계측 (neubie-ab) — B1/B2는 ?layout 자동판별.
+     sync-public.js 가 닫는 body 태그 직전에 이 블록(BEGIN~END)을 주입/교체한다.
      B(index.html) 재export 시 계측이 사라지므로 export 후 `node neubie-ab/sync-public.js` 실행. -->
 <script src="/neubie-ab/assign.js"></script>
 <script src="/neubie-ab/config.shared.js"></script>
@@ -24,9 +24,10 @@
     var cam = document.getElementById('cam-video');
     if (!cam) return;
     try { state.paused = true; state.autoAdvance = false; } catch (e) {} // 레거시 여정 엔진 정지
-    document.body.classList.add('ab-testmode');                          // 레거시 여정 UI 숨김
+    // 여정 알림 토스트만 숨김(일시적 여정 메시지 노이즈). 시나리오 카드(#scenario-panel)는 B 디자인이라 유지.
+    document.body.classList.add('ab-testmode');
     var _st = document.createElement('style');
-    _st.textContent = '.ab-testmode #scenario-panel,.ab-testmode #left-alert-toast,.ab-testmode #cam-alert{display:none!important;}';
+    _st.textContent = '.ab-testmode #left-alert-toast,.ab-testmode #cam-alert{display:none!important;}';
     document.head.appendChild(_st);
     var sc = parseInt(new URLSearchParams(location.search).get('scenario'), 10);
     if (sc) {                              // ?scenario=N → 해당 시나리오 + 계측
@@ -41,3 +42,4 @@
   })();
   // 응답(T3) 훅은 [횡단하기]·[주행 불가능] 등 액션 버튼 구현 후 연결
 </script>
+<!-- NEUBIE-AB:END -->

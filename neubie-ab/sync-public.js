@@ -15,7 +15,8 @@ var path = require('path');
 var DIR = __dirname;                       // neubie-ab/
 var ROOT = path.join(DIR, '..');           // repo root
 var PUB = path.join(ROOT, 'public');
-var START = '<!-- ── A/B 테스트 계측 (neubie-ab)'; // 주입 블록 시작 마커(교체 기준)
+var BEGIN = '<!-- NEUBIE-AB:BEGIN'; // 주입 블록 sentinel (교체 기준)
+var END = '<!-- NEUBIE-AB:END -->';
 
 function cp(src, dst) { fs.copyFileSync(src, dst); console.log('  cp', path.relative(ROOT, src), '→', path.relative(ROOT, dst)); }
 
@@ -38,16 +39,21 @@ if (!fs.existsSync(bPath)) {
   var html = fs.readFileSync(bPath, 'utf8');
   var inject = fs.readFileSync(path.join(DIR, 'b-instrumentation.html'), 'utf8');
   var replaced = false;
-  // 기존 주입 블록이 있으면 제거(START~</body>) 후 최신 블록으로 교체
-  var sidx = html.indexOf(START);
-  if (sidx >= 0) {
-    var bend = html.indexOf('</body>', sidx);
-    if (bend >= 0) { html = html.slice(0, sidx) + html.slice(bend); replaced = true; }
+  // 기존 sentinel 블록(BEGIN~END)이 있으면 모두 제거 후 최신 블록으로 교체
+  while (true) {
+    var b = html.indexOf(BEGIN);
+    if (b < 0) break;
+    var e = html.indexOf(END, b);
+    if (e < 0) break;
+    html = html.slice(0, b) + html.slice(e + END.length);
+    replaced = true;
   }
   var idx = html.lastIndexOf('</body>');
-  if (idx < 0) { console.error('  B: </body> 없음 — 주입 실패'); process.exit(1); }
-  fs.writeFileSync(bPath, html.slice(0, idx) + inject + '\n' + html.slice(idx), 'utf8');
-  console.log('  B: 계측 ' + (replaced ? '갱신' : '주입') + ' 완료 (</body> 직전)');
+  if (idx < 0) { console.error('  B: 닫는 body 태그 없음 — 주입 실패'); process.exit(1); }
+  // 앞뒤 잉여 공백 정리 후 주입
+  var headPart = html.slice(0, idx).replace(/\s*$/, '\n');
+  fs.writeFileSync(bPath, headPart + inject + '\n' + html.slice(idx), 'utf8');
+  console.log('  B: 계측 ' + (replaced ? '갱신' : '주입') + ' 완료 (닫는 body 직전)');
 }
 
 console.log('✓ sync-public 완료');
