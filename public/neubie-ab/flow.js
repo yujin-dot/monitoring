@@ -1,14 +1,15 @@
 /*
  * flow.js — 참가자 세션 흐름(오케스트레이션). window.NeubieFlow
  *
- * entry.html(수집정보 입력) → start(pid) → 본인 배정대로 10개 트라이얼을 순서대로 진행 → 종료.
- * 시퀀스 = assign(pid).order(2시안) × within 시나리오 [1,2,3,5,6] = 10.
- * URL은 상대경로로 만들어 localhost/배포 양쪽에서 동작. 상태는 localStorage.
+ * 흐름: entry.html(수집정보 → 방법설명) → start(pid) →
+ *   각 트라이얼 페이지에서  [시나리오 설명 오버레이 → 시작하기] → 테스트 → [완료 오버레이 → 다음]
+ *   → 다음 트라이얼 … → 마지막엔 종료 화면(entry.html?done=1).
  *
- * 트라이얼 페이지(A·B)는 mountNextButton()으로 "다음 (n/10)" 컨트롤을 띄워 next()로 진행.
- * (응답 버튼이 생기면 markResponse 후 NeubieFlow.next()를 호출하도록 바꾸면 자동 진행됨)
- *
+ * 시퀀스 = assign(pid).order(2시안) × within [1,2,3,5,6] = 10. URL 상대경로, 상태 localStorage.
  * 의존: window.NeubieConfig, window.NeubieAssign.
+ *
+ * 트라이얼 페이지는 flow.js만 로드하면 자동 동작(?scenario + 흐름 세션일 때).
+ * 응답 버튼이 생기면: markResponse 후 NeubieFlow.complete(result) 호출 → 완료 오버레이 자동.
  */
 (function (root, factory) {
   var api = factory();
@@ -19,45 +20,37 @@
 
   var KEY = 'neubie_flow';
   var WITHIN = [1, 2, 3, 5, 6]; // S4 제외
+  var PRIMARY = '#00BA7C';
 
   function cfg() { return (typeof window !== 'undefined' && window.NeubieConfig) || null; }
-  function assignFn() { return (typeof window !== 'undefined' && window.NeubieAssign) || null; }
-  function param(name) { return new URLSearchParams(location.search).get(name); }
-
+  function assignMod() { return (typeof window !== 'undefined' && window.NeubieAssign) || null; }
+  function param(n) { return new URLSearchParams(location.search).get(n); }
   function load() { try { return JSON.parse(localStorage.getItem(KEY)) || null; } catch (e) { return null; } }
   function save(o) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
   function clear() { try { localStorage.removeItem(KEY); } catch (e) {} }
 
-  // variant + pid + scenario → 상대 진입 URL
   function trialUrl(variant, pid, sc) {
-    var p = cfg().links[variant].url;            // '/remote-control-A.html' | '/?layout=vertical'
+    var p = cfg().links[variant].url;
     var sep = p.indexOf('?') >= 0 ? '&' : '?';
     return p + sep + 'pid=' + pid + '&scenario=' + sc;
   }
 
-  // pid → 10개 트라이얼 시퀀스
   function buildSequence(pid) {
-    var a = assignFn().assign(Number(pid));
+    var a = assignMod().assign(Number(pid));
     var seq = [];
     a.order.forEach(function (variant, oi) {
       WITHIN.forEach(function (sc) {
-        seq.push({
-          variant: variant, scenario: sc, block_position: oi + 1,
-          name: cfg().scenarios[sc].name, url: trialUrl(variant, pid, sc)
-        });
+        seq.push({ variant: variant, scenario: sc, block_position: oi + 1, name: cfg().scenarios[sc].name, url: trialUrl(variant, pid, sc) });
       });
     });
     return seq;
   }
 
-  // 현재 페이지의 variant 추정 (A=파일명 / B=?layout)
   function currentVariant() {
     if (location.pathname.indexOf('remote-control-A') >= 0) return 'control_A';
     var l = param('layout');
     return (cfg().variantByLayout && cfg().variantByLayout[l]) || null;
   }
-
-  // 현재 페이지가 시퀀스의 몇 번째인지 (variant+scenario로 매칭). 못 찾으면 -1.
   function currentIndex(pid, seq) {
     seq = seq || buildSequence(pid);
     var v = currentVariant(), sc = Number(param('scenario'));
@@ -65,70 +58,113 @@
     return -1;
   }
 
-  // 흐름 시작: 수집정보 저장 후 첫 트라이얼로 이동 (identify는 entry.html에서 별도 호출)
   function start(pid, profile) {
     var seq = buildSequence(pid);
     save({ pid: String(pid), profile: profile || null, total: seq.length });
     location.href = seq[0].url;
   }
+  function active(pid) { var f = load(); return !!(f && String(f.pid) === String(pid)); }
 
-  // 이 pid의 흐름이 진행 중인지
-  function active(pid) {
-    var f = load();
-    return !!(f && String(f.pid) === String(pid));
-  }
-
-  // 다음 트라이얼로. 마지막이면 종료 화면으로.
   function next() {
-    var f = load();
-    if (!f) return;
-    var pid = f.pid, seq = buildSequence(pid);
-    var i = currentIndex(pid, seq);
-    var ni = (i < 0 ? 0 : i) + 1;
+    var f = load(); if (!f) return;
+    var pid = f.pid, seq = buildSequence(pid), i = currentIndex(pid, seq), ni = (i < 0 ? 0 : i) + 1;
     if (ni < seq.length) location.href = seq[ni].url;
     else location.href = '/entry.html?pid=' + pid + '&done=1';
   }
 
-  // 트라이얼 페이지 우측하단에 "다음 (n/10) →" 버튼 + 진행 표시
-  function mountNextButton() {
-    if (typeof document === 'undefined') return;
-    if (!param('scenario')) return;              // 트라이얼 페이지(?scenario)에서만
-    if (document.getElementById('neubie-flow-bar')) return; // 중복 방지
-    var pid = param('pid');
-    if (!pid || !active(pid)) return;            // 흐름 세션일 때만
-    var seq = buildSequence(pid);
-    var i = currentIndex(pid, seq);
-    var n = (i < 0 ? 0 : i) + 1, total = seq.length;
-    var last = n >= total;
-
-    var bar = document.createElement('div');
-    bar.id = 'neubie-flow-bar';
-    bar.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:99999;display:flex;align-items:center;gap:10px;'
-      + 'background:rgba(0,0,0,.78);color:#fff;padding:10px 14px;border-radius:10px;font:600 13px Pretendard,system-ui,sans-serif;box-shadow:0 4px 16px rgba(0,0,0,.3);';
-    var label = document.createElement('span');
-    label.textContent = '시나리오 ' + n + ' / ' + total;
-    label.style.opacity = '.85';
-    var btn = document.createElement('button');
-    btn.textContent = last ? '테스트 종료 →' : '다음 →';
-    btn.style.cssText = 'border:none;border-radius:7px;padding:8px 14px;font:inherit;cursor:pointer;background:#00BA7C;color:#fff;';
-    btn.onclick = function () { next(); };
-    bar.appendChild(label); bar.appendChild(btn);
-    (document.body || document.documentElement).appendChild(bar);
+  // ── 오버레이 UI ──────────────────────────────────────────────
+  function camVideo() { return document.getElementById('cam-video'); }
+  function removeOverlay() { var o = document.getElementById('neubie-flow-ovl'); if (o) o.remove(); }
+  function overlay(innerHtml) {
+    removeOverlay();
+    var o = document.createElement('div');
+    o.id = 'neubie-flow-ovl';
+    o.style.cssText = 'position:fixed;inset:0;z-index:100000;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;'
+      + 'background:rgba(0,0,0,.62);color:#fff;font-family:Pretendard,-apple-system,system-ui,sans-serif;padding:24px;';
+    o.innerHTML = innerHtml;
+    (document.body || document.documentElement).appendChild(o);
+    return o;
+  }
+  function btnHtml(id, text) {
+    return '<button id="' + id + '" style="margin-top:28px;border:none;border-radius:10px;background:' + PRIMARY + ';color:#fff;'
+      + 'font:700 17px Pretendard,system-ui,sans-serif;padding:14px 40px;cursor:pointer;">' + text + '</button>';
   }
 
-  // 트라이얼 페이지 로드 시 자동으로 "다음" 컨트롤 마운트 (흐름 세션 + ?scenario일 때만)
+  // 시나리오 설명 오버레이 → [시작하기]에서 영상 재생 시작
+  function showScenarioIntro() {
+    var pid = param('pid'), sc = Number(param('scenario'));
+    var seq = buildSequence(pid), i = currentIndex(pid, seq);
+    var pos = (i < 0 ? 0 : i) + 1, total = seq.length;
+    var desc = (cfg().scenarioIntros && cfg().scenarioIntros[sc]) || (cfg().scenarios[sc] && cfg().scenarios[sc].expectedAction) || '';
+    var cam = camVideo();
+    if (cam) { try { cam.pause(); cam.currentTime = 0; } catch (e) {} }
+
+    overlay(
+      '<div style="opacity:.7;font-size:14px;font-weight:600;letter-spacing:.04em;">' + pos + ' / ' + total + '</div>'
+      + '<div style="font-size:34px;font-weight:800;margin-top:6px;">시나리오 ' + pos + '</div>'
+      + '<div style="max-width:420px;margin-top:14px;font-size:16px;line-height:1.6;color:#E0E0E0;">' + desc + '</div>'
+      + btnHtml('neubie-flow-startbtn', '시작하기')
+    );
+    document.getElementById('neubie-flow-startbtn').onclick = function () {
+      removeOverlay();
+      var c = camVideo();
+      if (c) { try { c.currentTime = 0; } catch (e) {} if (c.play) c.play().catch(function () {}); }
+      // 트라이얼이 시작 훅을 노출하면 호출(영상 외 셋업)
+      if (typeof window.__neubieScenarioStart === 'function') { try { window.__neubieScenarioStart(sc); } catch (e) {} }
+      mountFinishButton();
+    };
+  }
+
+  // 우측하단 "완료 →" (응답 버튼 생기기 전 수동 진행용)
+  function mountFinishButton() {
+    if (document.getElementById('neubie-flow-fin')) return;
+    var b = document.createElement('button');
+    b.id = 'neubie-flow-fin';
+    b.textContent = '완료 →';
+    b.style.cssText = 'position:fixed;right:16px;bottom:16px;z-index:99999;border:none;border-radius:10px;background:' + PRIMARY + ';color:#fff;'
+      + 'font:700 14px Pretendard,system-ui,sans-serif;padding:11px 18px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.3);';
+    b.onclick = function () { complete(); };
+    (document.body || document.documentElement).appendChild(b);
+  }
+
+  // 완료 오버레이 → [다음]. result.success가 있으면 성공/실패 표시.
+  function complete(result) {
+    var fin = document.getElementById('neubie-flow-fin'); if (fin) fin.remove();
+    var pid = param('pid'), seq = buildSequence(pid), i = currentIndex(pid, seq);
+    var last = ((i < 0 ? 0 : i) + 1) >= seq.length;
+    var mark = '✓', head = '시나리오 완료', color = PRIMARY;
+    if (result && result.success === false) { mark = '✕'; head = '시나리오 종료'; color = '#FA5952'; }
+    overlay(
+      '<div style="font-size:54px;color:' + color + ';">' + mark + '</div>'
+      + '<div style="font-size:26px;font-weight:800;margin-top:8px;">' + head + '</div>'
+      + btnHtml('neubie-flow-nextbtn', last ? '테스트 종료 →' : '다음 시나리오 →')
+    );
+    document.getElementById('neubie-flow-nextbtn').onclick = function () { next(); };
+  }
+
+  // 트라이얼 페이지 진입 시 자동: 흐름 세션 + ?scenario면 시나리오 설명부터
+  function mount() {
+    if (typeof document === 'undefined') return;
+    if (!param('scenario')) return;
+    var pid = param('pid');
+    if (!pid || !active(pid)) return;
+    if (document.getElementById('neubie-flow-ovl')) return;
+    showScenarioIntro();
+  }
+
   if (typeof document !== 'undefined') {
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountNextButton);
-    else setTimeout(mountNextButton, 0);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
+    else setTimeout(mount, 0);
   }
 
   return {
     buildSequence: buildSequence,
     start: start,
     next: next,
+    complete: complete,          // 응답 버튼에서 markResponse 후 호출 권장
     active: active,
+    mount: mount,
     current: function (pid) { var s = buildSequence(pid); var i = currentIndex(pid, s); return { index: i, n: i + 1, total: s.length, trial: s[i] || null }; },
-    mountNextButton: mountNextButton,
     clear: clear,
     _load: load
   };

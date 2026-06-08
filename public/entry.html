@@ -71,8 +71,7 @@
     card.innerHTML =
       '<h1>원격제어 A/B 사용성 테스트</h1>'
       + '<p class="sub">시작 전 아래 정보를 입력해주세요. 모든 항목은 분석용으로만 쓰이며, 테스트 데이터로 분리 저장됩니다.</p>'
-      + (pid ? '<div class="pid">참가자 번호 <b>#'+pid+'</b></div>'
-             : '<div class="field" style="margin-top:14px;"><label>참가자 번호 <span class="hint">진행자에게 받은 번호</span></label><input type="number" id="pidInput" min="1" placeholder="예: 1" /></div>')
+      + '<div class="field" style="margin-top:14px;"><label>참가자 번호 <span class="hint">진행자에게 받은 번호</span></label><input type="number" id="pidInput" min="1" value="'+(pid||'')+'" placeholder="예: 1" inputmode="numeric" /></div>'
       + '<form id="f">'
       + '<div class="field"><label>연령대</label><select name="age_band" required>'
         + '<option value="" disabled selected>선택</option>'
@@ -112,6 +111,15 @@
       document.getElementById('jobRoleField').classList.toggle('hidden', v!=='N');
     }
 
+    // 수집정보 제출 후: 실험 방법 설명 → [시작] → 흐름 시작
+    function showMethod(pid, profile){
+      card.innerHTML = '<h1>실험 방법 안내</h1>'
+        + '<p class="sub" style="margin-top:16px;font-size:15px;line-height:1.7;">'
+          + ((window.NeubieConfig && NeubieConfig.methodIntro) || '') + '</p>'
+        + '<button class="start" id="goStart" style="margin-top:28px;">시작 →</button>';
+      document.getElementById('goStart').onclick = function(){ NeubieFlow.start(pid, profile); };
+    }
+
     f.addEventListener('submit', function(e){
       e.preventDefault();
       var err = document.getElementById('err'); err.textContent='';
@@ -139,7 +147,7 @@
         NeubieAB.init({ seed: parseInt(thePid,10), intake: true });
         NeubieAB.identify(profile);
       } catch(ex){ console.warn('identify 실패', ex); }
-      NeubieFlow.start(thePid, profile);   // → 첫 트라이얼로 이동
+      showMethod(thePid, profile);   // → 방법 설명 → [시작] → 첫 트라이얼
     });
   })();
   </script>
