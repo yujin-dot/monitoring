@@ -148,6 +148,13 @@
     var marker = (S.config.posthog && S.config.posthog.testMarker) || {};
     var props = Object.assign({}, marker, profile, derived); // 사람(person)에도 테스트 표식
     if (S.ph && S.ph.identify) S.ph.identify(S.participantId, props);
+    // Google Sheets(participants 탭)에도 기록
+    sheetSend('participant', Object.assign({
+      participant_id: S.participantId,
+      track: S.assignment && S.assignment.track,
+      order: S.assignment && S.assignment.order.join('>'),
+      ua: (typeof navigator !== 'undefined' ? navigator.userAgent : '')
+    }, props));
     else console.log('[NeubieAB] identify(폴백):', S.participantId, props);
     return props;
   }
@@ -167,7 +174,8 @@
       stimulus_video: (scenario === 3 && a) ? a.s3Video[S.variant] : null,
       sub_test: (scenario === 1 && a) ? a.s1Sub[S.variant] : null,
       block_position: a ? a.blockPosition[S.variant] : null,
-      is_first_exposure: S.exposures[scenario] === 1
+      is_first_exposure: S.exposures[scenario] === 1,
+      scenario_name: sc.name
     };
     if (override) Object.assign(ctx, override);
 
@@ -349,6 +357,7 @@
         if (result.success == null) result.success = f.settled;
       } else if (t.pointer.state) {        // 클릭 타깃(S6 등)
         ev.overshoot_count = t.pointer.state.overshoot;
+        if (t.pointer.state.pathLen != null) ev.mouse_path_px = Math.round(t.pointer.state.pathLen);
       }
       if (t.pointer.stop) t.pointer.stop();
     }
@@ -368,6 +377,7 @@
     }
 
     _capture('trial_result', ev);
+    sheetSend('trial', ev);          // Google Sheets(trials 탭)에도 기록
     S.trial = null;
     return ev;
   }
@@ -399,6 +409,23 @@
         break;
     }
     return o;
+  }
+
+  // Google Sheets(Apps Script 웹앱)로 행 전송. endpoint 미설정(TODO)이면 no-op.
+  function sheetSend(type, props) {
+    var sh = S.config && S.config.sheets;
+    if (!sh || !sh.enabled || !sh.endpoint || /TODO/.test(sh.endpoint)) return;
+    var marker = (S.config.posthog && S.config.posthog.testMarker) || {};
+    var payload = Object.assign({ type: type, ts: new Date().toISOString() }, marker, props);
+    try {
+      var body = JSON.stringify(payload);
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        navigator.sendBeacon(sh.endpoint, new Blob([body], { type: 'text/plain;charset=UTF-8' }));
+      } else if (typeof fetch === 'function') {
+        fetch(sh.endpoint, { method: 'POST', mode: 'no-cors', keepalive: true,
+          headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, body: body });
+      }
+    } catch (e) { console.warn('[NeubieAB] sheetSend 실패:', e); }
   }
 
   function _capture(eventName, props) {

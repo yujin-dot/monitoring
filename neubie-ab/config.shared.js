@@ -49,6 +49,13 @@
     },
     variantByLayout: { vertical: 'B1', b: 'B1', horizontal: 'B2', a: 'B2' },
 
+    // ── Google Sheets 기록 (Apps Script 웹앱) ──
+    // 빈 시트 + Apps Script doPost 배포 후 그 웹앱 URL을 endpoint에 넣으면 활성화. 그 전엔 no-op.
+    sheets: {
+      enabled: true,
+      endpoint: 'TODO_APPS_SCRIPT_WEBAPP_URL'
+    },
+
     // 시나리오 미지정(?scenario 없음)일 때 카메라에 표시할 기본 피드 영상
     defaultVideo: '/scenario-videos/scenario3-1.mp4',
 
