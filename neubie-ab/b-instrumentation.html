@@ -20,27 +20,47 @@
   // NeubieAB.identify({ age_band:'30s', license:'Y', driving_1yr:'Y',
   //   ops_experience:'Y', ops_months:'6mo-1yr', urban_delivery_exp:'N', job_role:'OP' });
 
-  // ── 테스트 빌드: 기존 12스텝 여정 엔진/UI 끄고 테스트 영상 표시 ──
+  // ── 테스트 빌드: 여정 알림 토스트만 숨김(시나리오 카드는 유지) ──
   (function () {
     var cam = document.getElementById('cam-video');
     if (!cam) return;
-    try { state.paused = true; state.autoAdvance = false; } catch (e) {} // 레거시 여정 엔진 정지
-    // 여정 알림 토스트만 숨김(일시적 여정 메시지 노이즈). 시나리오 카드(#scenario-panel)는 B 디자인이라 유지.
     document.body.classList.add('ab-testmode');
     var _st = document.createElement('style');
     _st.textContent = '.ab-testmode #left-alert-toast,.ab-testmode #cam-alert{display:none!important;}';
     document.head.appendChild(_st);
-    var sc = parseInt(new URLSearchParams(location.search).get('scenario'), 10);
-    if (sc) {                              // ?scenario=N → 해당 시나리오 + 계측
-      NeubieAB.startTrial(sc);
-      NeubieAB.loadScenarioVideo(cam, sc); // S3=배정 taxi/bump, 그 외=config.scenarios[n].video
-      NeubieAB.bindVideo(cam, sc);         // video-trigger(S2·S3·S6) 트리거 시점 자동 markStimulus
-    } else {                               // 미지정 → 기본 피드
-      cam.src = (window.NeubieConfig && NeubieConfig.defaultVideo) || '';
+
+    var qs = new URLSearchParams(location.search);
+    var sc = parseInt(qs.get('scenario'), 10);
+    var pid = qs.get('pid');
+
+    // 시나리오 셋업: B 자체 시스템 loadScenarioTest(영상+횡단보도+상태)에 위임 + 계측 바인딩.
+    // (흐름이면 [시작하기]에서, 아니면 즉시 실행)
+    function setupScenario() {
+      if (!sc) { // 미지정 → 기본 피드
+        try { state.paused = true; state.autoAdvance = false; } catch (e) {}
+        cam.src = (window.NeubieConfig && NeubieConfig.defaultVideo) || '';
+        if (cam.load) cam.load(); if (cam.play) cam.play().catch(function () {});
+        return;
+      }
+      var ctx = NeubieAB.startTrial(sc);
+      if (typeof loadScenarioTest === 'function' && typeof SCENARIO_TESTS !== 'undefined') {
+        var testNum = 1;                                  // 기본 test1
+        if (sc === 1 && ctx.sub_test) testNum = ctx.sub_test;                       // 1=wifi500, 2=battery17
+        else if (sc === 3 && ctx.stimulus_video) testNum = ctx.stimulus_video === 'bump' ? 2 : 1; // taxi=1, bump=2
+        var idx = SCENARIO_TESTS.findIndex(function (t) { return t.sc === sc && t.test === testNum; });
+        if (idx >= 0) { loadScenarioTest(idx); }          // ← 횡단보도 등 시나리오 UI 표시
+        else { try { state.paused = true; state.autoAdvance = false; } catch (e) {} NeubieAB.loadScenarioVideo(cam, sc); if (cam.load) cam.load(); if (cam.play) cam.play().catch(function () {}); }
+      } else { // 폴백: loadScenarioTest 없으면 영상만
+        try { state.paused = true; state.autoAdvance = false; } catch (e) {}
+        NeubieAB.loadScenarioVideo(cam, sc); if (cam.load) cam.load(); if (cam.play) cam.play().catch(function () {});
+      }
+      NeubieAB.bindVideo(cam, sc); // video-trigger(S2·S3·S6) 트리거 시점 자동 markStimulus
     }
-    if (cam.load) cam.load();
-    if (cam.play) cam.play().catch(function () {});
+    window.__neubieScenarioStart = setupScenario; // flow가 [시작하기]에서 호출
+
+    // 흐름 세션이면 flow 인트로의 [시작하기]가 setupScenario 호출. 아니면 즉시(직접 URL 테스트).
+    if (!(window.NeubieFlow && pid && NeubieFlow.active(pid) && sc)) setupScenario();
   })();
-  // 응답(T3) 훅은 [횡단하기]·[주행 불가능] 등 액션 버튼 구현 후 연결
+  // 응답(T3) 훅: 액션 버튼 클릭에서 NeubieAB.markResponse(r); NeubieFlow.complete(r);
 </script>
 <!-- NEUBIE-AB:END -->

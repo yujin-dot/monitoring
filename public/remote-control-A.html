@@ -208,7 +208,8 @@
   /* map */
   .map { width: 100%; height: 300px; border-radius: var(--r-sm); overflow: hidden; position: relative;
     background: #EAEEF0; flex: 0 0 auto; border: 1px solid var(--mono-100); }
-  .map .base { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.2); transform-origin: center; }
+  @keyframes mapPan { from { transform: scale(1.2) translateY(4%); } to { transform: scale(1.2) translateY(-4%); } }
+  .map .base { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.2); transform-origin: center; animation: mapPan 10s ease-in-out infinite alternate; }
   .map .ov { position: absolute; z-index: 2; }
   .map .badge { left: 10px; top: 10px; display: flex; align-items: center; gap: 6px;
     background: var(--primary-500); color: #fff; font-size: 12px; font-weight: 700;
@@ -636,7 +637,8 @@
   }
   function applyState(s) {
     var set = function (id, txt) { var el = document.getElementById(id); if (el) el.textContent = txt; };
-    set('st-speed', Number(s.speed).toFixed(2) + 'm/s');
+    var spd = Number(s.speed).toFixed(2) + 'm/s';
+    var spEl = document.getElementById('st-speed'); if (spEl) { spEl.dataset.drive = spd; spEl.textContent = spd; }
     set('st-batt', s.battery_pct + '%');
     set('st-gps', s.gps);
     set('st-pitch', s.pitch_deg + '°');
@@ -648,6 +650,7 @@
     var rr = document.getElementById('rollRobot');  if (rr) rr.style.transform = 'rotate(' + s.roll_deg + 'deg)';
     setSeg('sidebrake', s.sidebrake); setSeg('gamepad', s.gamepad); setSeg('headlamp', s.headlamp);
     var as = document.getElementById('sw-autostop'); if (as) as.classList.toggle('on', s.autostop === 'ON');
+    setSideBrake(s.sidebrake === 'ON');   // 사이드브레이크 상태 → 비디오/미니맵/속도 반영
   }
   // 시나리오 유효 상태 = 공통 기본값 + 시나리오 override + (S1 서브 / S3 영상) override
   function effState(scNum) {
@@ -672,11 +675,36 @@
     scNum = Number(scNum);
     var C = window.NeubieConfig; if (!C) return;
     var sc = C.scenarios[scNum]; if (!sc) return;
+    setCrosswalk(scNum === 2);                          // S2 = 횡단보도 인식 → 논모달 표시 (applyState보다 먼저: S2 영상 정지 유지)
     var s = effState(scNum); if (s) applyState(s);
     setActiveStep(sc.route === '출발지 이동' ? 0 : 1);   // 출발지 이동 → 1번째, 그 외(목적지/도착) → 2번째
-    setCrosswalk(scNum === 2);                          // S2 = 횡단보도 인식 → 논모달 표시
   }
   window.applyScenario = applyScenario;
+
+  // ── 사이드브레이크 ON/OFF → 비디오·미니맵·속도 ────────────────
+  function setSideBrake(on) {
+    var cam = document.getElementById('cam-video');
+    var mapImg = document.querySelector('.map .base');
+    var spEl = document.getElementById('st-speed');
+    var card = document.getElementById('xwalk');
+    var cardShown = card && card.classList.contains('show');
+    if (on) {
+      if (cam) cam.pause();                                       // 비디오 정지
+      if (mapImg) mapImg.style.animationPlayState = 'paused';     // 미니맵 이동 정지
+      if (spEl) spEl.textContent = '0.00m/s';                     // 속도 0
+    } else {
+      if (cam && !cardShown) cam.play().catch(function () {});    // 재생 (S2 횡단 대기 중이면 정지 유지)
+      if (mapImg) mapImg.style.animationPlayState = 'running';
+      if (spEl) spEl.textContent = spEl.dataset.drive || spEl.textContent;
+    }
+  }
+  window.setSideBrake = setSideBrake;
+  (function () {
+    var seg = document.querySelector('.seg[data-ctl="sidebrake"]');
+    if (seg) seg.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () { setSideBrake(b.textContent.trim() === 'ON'); });
+    });
+  })();
 
   // ── 신호등 횡단보도 논모달 표시/숨김 ──────────────────────────
   function setCrosswalk(show) {
@@ -752,9 +780,9 @@
     } else if (scNum === 3) {
       var vd = C.videos[opt.video || 'taxi']; if (vd) { if (vd.state) Object.assign(s, vd.state); videoSrc = vd.src; }
     }
+    if (typeof setCrosswalk === 'function') setCrosswalk(scNum === 2);
     if (typeof applyState === 'function') applyState(s);
     if (typeof setActiveStep === 'function') setActiveStep(sc.route === '출발지 이동' ? 0 : 1);
-    if (typeof setCrosswalk === 'function') setCrosswalk(scNum === 2);
     var cam = document.getElementById('cam-video');
     if (cam && videoSrc) {
       cam.src = videoSrc; if (cam.load) cam.load();

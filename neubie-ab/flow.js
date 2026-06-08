@@ -107,10 +107,13 @@
     );
     document.getElementById('neubie-flow-startbtn').onclick = function () {
       removeOverlay();
-      var c = camVideo();
-      if (c) { try { c.currentTime = 0; } catch (e) {} if (c.play) c.play().catch(function () {}); }
-      // 트라이얼이 시작 훅을 노출하면 호출(영상 외 셋업)
-      if (typeof window.__neubieScenarioStart === 'function') { try { window.__neubieScenarioStart(sc); } catch (e) {} }
+      // 트라이얼이 시작 훅을 노출하면 그게 영상/시나리오 셋업을 담당(예: B는 S2 영상을 횡단하기까지 대기).
+      if (typeof window.__neubieScenarioStart === 'function') {
+        try { window.__neubieScenarioStart(sc); } catch (e) {}
+      } else { // 훅 없으면(A 등) 영상 직접 재생 폴백
+        var c = camVideo();
+        if (c) { try { c.currentTime = 0; } catch (e) {} if (c.play) c.play().catch(function () {}); }
+      }
       mountFinishButton();
     };
   }
