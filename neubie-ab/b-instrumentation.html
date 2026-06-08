@@ -26,7 +26,11 @@
     if (!cam) return;
     document.body.classList.add('ab-testmode');
     var _st = document.createElement('style');
-    _st.textContent = '.ab-testmode #left-alert-toast,.ab-testmode #cam-alert{display:none!important;}';
+    _st.textContent = '.ab-testmode #left-alert-toast,.ab-testmode #cam-alert{display:none!important;}'
+      // 횡단보도 오버레이가 지도 컨테이너에 잘리지 않도록 표시 시 화면 중앙 모달로
+      + '.ab-testmode #xwalk-overlay.show{position:fixed!important;top:50%!important;left:50%!important;right:auto!important;bottom:auto!important;'
+      + 'transform:translate(-50%,-50%)!important;width:340px!important;max-width:88vw!important;max-height:84vh!important;overflow:auto!important;'
+      + 'z-index:100001!important;box-shadow:0 8px 32px rgba(0,0,0,.45)!important;}';
     document.head.appendChild(_st);
 
     var qs = new URLSearchParams(location.search);
