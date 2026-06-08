@@ -227,6 +227,32 @@
     border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); display: grid; place-items: center; color: #fff; }
   .map .robot .ring svg { width: 16px; height: 16px; }
 
+  /* ── 알림 팝업 (Alerts: Light) — 토스트 오버레이(레이아웃 영향 없음), 같은 위치에 겹쳐 쌓임(최신 앞) ── */
+  #alert-stack { position: fixed; top: 85px; left: 72px; right: 320px; height: 44px; z-index: 40; pointer-events: none; }
+  #alert-stack:empty { display: none; }
+  .alert { position: absolute; left: 0; right: 0; top: 0; transform-origin: top center; pointer-events: none;
+    display: flex; align-items: center; gap: 10px; height: 44px;
+    padding: 0 8px 0 14px; border-radius: 999px; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,.22);
+    transition: transform .2s ease, opacity .2s ease; animation: alertIn .25s ease; }
+  .alert .a-icon { width: 20px; height: 20px; flex: 0 0 auto; display: grid; place-items: center; }
+  .alert .a-icon svg { width: 18px; height: 18px; }
+  .alert .a-hogi { font-weight: 700; flex: 0 0 auto; }
+  .alert .a-msg { font-weight: 500; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .alert .a-dismiss { pointer-events: auto; flex: 0 0 auto; background: rgba(255,255,255,.18); border: none; color: inherit;
+    font-size: 12px; font-weight: 600; padding: 6px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  .alert.lv0 { background: var(--red-400); color: #fff; }
+  .alert.lv1 { background: var(--tertiary-300); color: #fff; }
+  .alert.lv2 { background: #FFEDE4; color: var(--tertiary-400); }
+  .alert.lv3, .alert.lv4 { background: #fff; color: var(--mono-800); border: 1px solid var(--mono-100); }
+  .alert.lv3 .a-icon, .alert.lv4 .a-icon { color: var(--mono-400); }
+  .alert.lv0.blink { animation: alertIn .25s ease, lvBlink 1s steps(1, end) infinite; }
+  @keyframes lvBlink { 0%, 50% { filter: none; } 50.01%, 100% { filter: brightness(.72); } }
+  @keyframes alertIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+  /* pitch/roll 미세 움직임(주행 중) — 정지 시 일시정지 */
+  #pitchRobot, #rollRobot { transform: rotate(var(--rot, 0deg)); animation: tiltWobble 1.4s ease-in-out infinite alternate; }
+  @keyframes tiltWobble { from { transform: rotate(calc(var(--rot, 0deg) - 1.6deg)); } to { transform: rotate(calc(var(--rot, 0deg) + 1.6deg)); } }
+
   /* ── Dialog ── */
   .dim { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 100; }
   .dim.open { display: flex; }
@@ -331,6 +357,8 @@
 
     <div class="content">
       <div class="center">
+        <!-- 알림 팝업: 헤더와 시나리오 바 사이 -->
+        <div id="alert-stack"></div>
         <!-- Sequence stepper -->
         <div class="stepper">
           <button class="close" id="btnClose" title="임무 종료">
@@ -599,11 +627,14 @@
     arrive: { title: '도착 처리할까요?', body: '현재 단계를 도착 처리하고 다음 단계로 이동합니다' },
     next:   { title: '다음 단계로 넘어갈까요?', body: '현재 단계를 건너뛰고 다음 단계를 진행합니다' },
   };
-  function openDialog(key) { const d = dialogs[key]; dlgTitle.textContent = d.title; dlgBody.textContent = d.body; dim.classList.add('open'); }
+  function openDialog(key) { window._pendingDialog = key; const d = dialogs[key]; dlgTitle.textContent = d.title; dlgBody.textContent = d.body; dim.classList.add('open'); }
   function closeDialog() { dim.classList.remove('open'); }
   document.getElementById('btnClose').addEventListener('click', () => openDialog('end'));
   document.getElementById('dlgCancel').addEventListener('click', closeDialog);
-  document.getElementById('dlgConfirm').addEventListener('click', closeDialog);
+  document.getElementById('dlgConfirm').addEventListener('click', function () {
+    if (window._pendingDialog === 'arrive' && Number(window._scenario) === 6) fireEventAlert(6, 'arrive'); // 도착 처리 → 도착 알림
+    closeDialog();
+  });
   dim.addEventListener('click', e => { if (e.target === dim) closeDialog(); });
 
   // volume (0–100)
@@ -646,8 +677,8 @@
     set('st-cargo', s.cargo);
     var wifi = document.getElementById('st-wifi');
     if (wifi) { var warn = Number(s.wifi_ms) > 150; wifi.textContent = (warn ? '주의 ' : '') + s.wifi_ms + 'ms'; wifi.classList.toggle('warn', warn); }
-    var pr = document.getElementById('pitchRobot'); if (pr) pr.style.transform = 'rotate(' + s.pitch_deg + 'deg)';
-    var rr = document.getElementById('rollRobot');  if (rr) rr.style.transform = 'rotate(' + s.roll_deg + 'deg)';
+    var pr = document.getElementById('pitchRobot'); if (pr) pr.style.setProperty('--rot', s.pitch_deg + 'deg');
+    var rr = document.getElementById('rollRobot');  if (rr) rr.style.setProperty('--rot', s.roll_deg + 'deg');
     setSeg('sidebrake', s.sidebrake); setSeg('gamepad', s.gamepad); setSeg('headlamp', s.headlamp);
     var as = document.getElementById('sw-autostop'); if (as) as.classList.toggle('on', s.autostop === 'ON');
     setSideBrake(s.sidebrake === 'ON');   // 사이드브레이크 상태 → 비디오/미니맵/속도 반영
@@ -678,26 +709,32 @@
     setCrosswalk(scNum === 2);                          // S2 = 횡단보도 인식 → 논모달 표시 (applyState보다 먼저: S2 영상 정지 유지)
     var s = effState(scNum); if (s) applyState(s);
     setActiveStep(sc.route === '출발지 이동' ? 0 : 1);   // 출발지 이동 → 1번째, 그 외(목적지/도착) → 2번째
+    window._scenario = scNum;
+    runScenarioAlerts(scNum);                           // 시나리오별 알림 리스트 노출
   }
   window.applyScenario = applyScenario;
 
   // ── 사이드브레이크 ON/OFF → 비디오·미니맵·속도 ────────────────
-  function setSideBrake(on) {
+  // running=false → 비디오·미니맵·pitch/roll 정지 + 속도 0 / true → 모두 재개
+  function applyMotion(running) {
     var cam = document.getElementById('cam-video');
     var mapImg = document.querySelector('.map .base');
     var spEl = document.getElementById('st-speed');
     var card = document.getElementById('xwalk');
     var cardShown = card && card.classList.contains('show');
-    if (on) {
-      if (cam) cam.pause();                                       // 비디오 정지
-      if (mapImg) mapImg.style.animationPlayState = 'paused';     // 미니맵 이동 정지
-      if (spEl) spEl.textContent = '0.00m/s';                     // 속도 0
-    } else {
-      if (cam && !cardShown) cam.play().catch(function () {});    // 재생 (S2 횡단 대기 중이면 정지 유지)
-      if (mapImg) mapImg.style.animationPlayState = 'running';
+    var pState = running ? 'running' : 'paused';
+    if (mapImg) mapImg.style.animationPlayState = pState;                 // 미니맵 이동
+    document.querySelectorAll('#pitchRobot, #rollRobot').forEach(function (s) { s.style.animationPlayState = pState; }); // pitch&roll
+    if (running) {
+      if (cam && !cardShown) cam.play().catch(function () {});            // 비디오 재생 (S2 횡단 대기 중이면 유지)
       if (spEl) spEl.textContent = spEl.dataset.drive || spEl.textContent;
+    } else {
+      if (cam) cam.pause();                                              // 비디오 정지
+      if (spEl) spEl.textContent = '0.00m/s';                            // 속도 0
     }
   }
+  window.applyMotion = applyMotion;
+  function setSideBrake(on) { applyMotion(!on); }   // 사이드브레이크 ON → 정지
   window.setSideBrake = setSideBrake;
   (function () {
     var seg = document.querySelector('.seg[data-ctl="sidebrake"]');
@@ -705,6 +742,87 @@
       b.addEventListener('click', function () { setSideBrake(b.textContent.trim() === 'ON'); });
     });
   })();
+
+  // ── 알림 팝업 (Alerts: Light) + 시나리오별 알림 리스트 ─────────
+  var SCENARIO_ALERTS = {
+    1: [
+      { delay: 0,     level: 5, msg: '디저트39-강남테헤란로점으로 이동합니다' },
+      { delay: 3000,  level: 4, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' },
+      { delay: 5000,  level: 4, msg: '보행자가 인접하여 천천히 주행합니다.' }
+    ],
+    2: [
+      { delay: 0,     level: 2, msg: '건널목 앞 정지하였습니다. 화면을 확인하고 주행을 재개해주세요.', stop: true },
+      { delay: 8000,  level: 3, msg: '[3D 장애물 메세지 유실] 주행 상태를 즉시 확인해주세요.' },
+      { delay: 10000, level: 4, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' },
+      { on: 'cross',  level: 2, msg: '건널목 횡단을 시작합니다.', resume: true }
+    ],
+    3: [
+      { delay: 2000,  level: 3, msg: '[3D 장애물 메세지 유실] 주행 상태를 즉시 확인해주세요.' },
+      { delay: 4500,  level: 3, msg: '[3D 장애물 메세지 유실] 주행 상태를 즉시 확인해주세요.' },
+      { delay: 10000, level: 4, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' }
+    ],
+    5: [
+      { delay: 0,     level: 2, msg: '전방에 주행 가능한 영역이 없습니다' },
+      { delay: 2000,  level: 4, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' }
+    ],
+    6: [
+      { delay: 1000,  level: 5, msg: '강남구 강남대로 468 충림빌딩에 곧 도착합니다.' },
+      { on: 'arrive', level: 5, msg: '강남구 강남대로 468 충림빌딩에 도착했습니다' }
+    ]
+  };
+  var ALERT_ICON = {
+    ban:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+    info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>'
+  };
+  function _alertIcon(lv) { return lv <= 1 ? ALERT_ICON.ban : (lv === 2 ? ALERT_ICON.warn : ALERT_ICON.info); }
+  function _esc(s) { return String(s).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+  var _alertTimers = [];
+  // 같은 위치에 겹쳐 쌓기: DOM 마지막=최신=맨 앞(front), 뒤 카드는 살짝 아래로 peek
+  function _restack() {
+    var st = document.getElementById('alert-stack'); if (!st) return;
+    var items = Array.prototype.slice.call(st.children);
+    var n = items.length;
+    items.forEach(function (el, i) {
+      var depth = n - 1 - i;                       // 0 = 최신(앞)
+      el.style.zIndex = String(i + 1);
+      el.style.transform = 'translateY(' + (depth * 6) + 'px) scale(' + (1 - depth * 0.04) + ')';
+      el.style.opacity = depth === 0 ? '1' : (depth === 1 ? '0.85' : (depth === 2 ? '0.6' : '0'));
+    });
+  }
+  function clearAlerts() {
+    _alertTimers.forEach(clearTimeout); _alertTimers = [];
+    var st = document.getElementById('alert-stack'); if (st) st.innerHTML = '';
+  }
+  function showAlert(a) {
+    var st = document.getElementById('alert-stack'); if (!st) return;
+    var lv = Math.min(Number(a.level), 4);              // 표 Level → Figma LV (5→4)
+    var persist = lv <= 1;                              // LV0/LV1 = 수동 해제, 그 외 3초 자동
+    var el = document.createElement('div');
+    el.className = 'alert lv' + lv + (lv === 0 ? ' blink' : '');
+    el.innerHTML = '<span class="a-icon">' + _alertIcon(lv) + '</span>' +
+      '<span class="a-hogi">' + (a.hogi || '1호기') + '</span>' +
+      '<span class="a-msg">' + _esc(a.msg) + '</span>' +
+      (persist ? '<button class="a-dismiss">알림 해제</button>' : '');
+    st.appendChild(el);   // 최신 = 맨 뒤 DOM = 맨 앞 표시
+    _restack();
+    if (persist) { el.querySelector('.a-dismiss').addEventListener('click', function () { el.remove(); _restack(); }); }
+    else { _alertTimers.push(setTimeout(function () { el.remove(); _restack(); }, 3000)); }
+  }
+  function runScenarioAlerts(scNum) {
+    clearAlerts();
+    var list = SCENARIO_ALERTS[scNum]; if (!list) return;
+    list.forEach(function (a) {
+      if (a.on) return;   // 이벤트 트리거(횡단하기/도착처리)는 별도 처리
+      _alertTimers.push(setTimeout(function () { showAlert(a); if (a.stop) applyMotion(false); }, a.delay || 0));
+    });
+  }
+  function fireEventAlert(scNum, evt) {
+    var list = SCENARIO_ALERTS[scNum]; if (!list) return;
+    list.forEach(function (a) { if (a.on === evt) { showAlert(a); if (a.resume) applyMotion(true); } });
+  }
+  window.runScenarioAlerts = runScenarioAlerts;
+  window.fireEventAlert = fireEventAlert;
 
   // ── 신호등 횡단보도 논모달 표시/숨김 ──────────────────────────
   function setCrosswalk(show) {
@@ -718,8 +836,7 @@
     var xb = document.getElementById('xwalkBtn');
     if (xb) xb.addEventListener('click', function () {
       setCrosswalk(false);
-      var cam = document.getElementById('cam-video');
-      if (cam) cam.play().catch(function () {}); // 횡단하기 → 메인 6캠 영상 시작
+      fireEventAlert(2, 'cross');   // "건널목 횡단을 시작합니다." 알림 + 비디오/미니맵/속도/pitch·roll 모두 재생
     });
   })();
 
@@ -789,6 +906,8 @@
       if (scNum === 2) { cam.removeAttribute('autoplay'); cam.pause(); } // S2: 메인 영상 정지([횡단하기] 전까지)
       else if (cam.play) cam.play().catch(function () {});
     }
+    window._scenario = scNum;
+    if (window.runScenarioAlerts) runScenarioAlerts(scNum); // 시나리오별 알림 리스트 노출
   }
 
   (function buildTweaks() {

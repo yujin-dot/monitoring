@@ -63,6 +63,36 @@
       6: "'도착하였습니다' 알림이 뜨면 [도착 처리] 버튼을 누르세요."
     },
 
+    // 시나리오별 알림(로그) — delay(ms, 0=즉시) / level(5~2, null) / msg. trigger='xwalk'|'arrival'은 버튼 클릭 시.
+    // (스프레드시트 기준. 화면멈춤/재생 등 '화면 변화'는 횡단보도 시스템이 처리하므로 여기선 로그 내용만)
+    scenarioAlerts: {
+      1: [
+        { delay: 0,     level: 5, msg: '디저트39-강남테헤란로점으로 이동합니다' },
+        { delay: 3000,  level: 4, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' },
+        { delay: 5000,  level: 4, msg: '보행자가 인접하여 천천히 주행합니다.' }
+      ],
+      2: [
+        { delay: 0,     level: 2, msg: '건널목 앞 정지하였습니다. 화면을 확인하고 주행을 재개해주세요.' },
+        { delay: 8000,  level: 3, msg: '[3D 장애물 메세지 유실] 주행 상태를 즉시 확인해주세요.' },
+        { delay: 8000,  level: 3, msg: '[3D 장애물 메세지 유실] 주행 상태를 즉시 확인해주세요.' },
+        { delay: 10000, level: null, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' },
+        { trigger: 'xwalk', level: 2, msg: '건널목 횡단을 시작합니다.' }
+      ],
+      3: [
+        { delay: 2000,  level: 3, msg: '[3D 장애물 메세지 유실] 주행 상태를 즉시 확인해주세요.' },
+        { delay: 2000,  level: 3, msg: '[3D 장애물 메세지 유실] 주행 상태를 즉시 확인해주세요.' },
+        { delay: 10000, level: null, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' }
+      ],
+      5: [
+        { delay: 0, level: 2, msg: '전방에 주행 가능한 영역이 없습니다' },
+        { delay: 0, level: null, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' }
+      ],
+      6: [
+        { delay: 1000, level: 5, msg: '강남구 강남대로 468 충림빌딩에 곧 도착합니다.' },
+        { trigger: 'arrival', level: 5, msg: '강남구 강남대로 468 충림빌딩에 도착했습니다' }
+      ]
+    },
+
     // ── group / expert_level 파생 규칙 (확정) ───────────────────
     //  group        : ops_experience === 'Y' → 'expert', else 'novice'
     //  expert_level : expert일 때만. ops_months 기준
