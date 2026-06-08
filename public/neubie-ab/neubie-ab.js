@@ -148,6 +148,7 @@
     var marker = (S.config.posthog && S.config.posthog.testMarker) || {};
     var props = Object.assign({}, marker, profile, derived); // 사람(person)에도 테스트 표식
     if (S.ph && S.ph.identify) S.ph.identify(S.participantId, props);
+    else console.log('[NeubieAB] identify(폴백):', S.participantId, props);
     // Google Sheets(participants 탭)에도 기록
     sheetSend('participant', Object.assign({
       participant_id: S.participantId,
@@ -155,7 +156,6 @@
       order: S.assignment && S.assignment.order.join('>'),
       ua: (typeof navigator !== 'undefined' ? navigator.userAgent : '')
     }, props));
-    else console.log('[NeubieAB] identify(폴백):', S.participantId, props);
     return props;
   }
 
