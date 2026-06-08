@@ -65,16 +65,20 @@
     if (!S.config) throw new Error('NeubieAB.init: config.shared.js(NeubieConfig)를 먼저 로드하세요.');
     if (!assignMod) throw new Error('NeubieAB.init: assign.js(NeubieAssign)를 먼저 로드하세요.');
 
-    // variant: 명시값 우선. 없으면 B 페이지의 ?layout으로 자동판별.
-    var variant = opts.variant;
-    if (!variant && typeof location !== 'undefined' && S.config.variantByLayout) {
-      var layoutParam = new URLSearchParams(location.search).get('layout');
-      if (layoutParam) variant = S.config.variantByLayout[layoutParam];
-    }
-    S.variant = variant;
-    if (['control_A', 'B1', 'B2'].indexOf(S.variant) < 0) {
-      throw new Error("NeubieAB.init: variant를 결정할 수 없습니다. " +
-        "A 페이지는 init({variant:'control_A'}), B 페이지는 ?layout=vertical|horizontal 필요. 받은 값: " + S.variant);
+    // intake 모드(entry.html): variant 없이 식별/흐름만. 그 외엔 variant 결정 필수.
+    if (opts.intake) {
+      S.variant = null;
+    } else {
+      var variant = opts.variant;
+      if (!variant && typeof location !== 'undefined' && S.config.variantByLayout) {
+        var layoutParam = new URLSearchParams(location.search).get('layout');
+        if (layoutParam) variant = S.config.variantByLayout[layoutParam];
+      }
+      S.variant = variant;
+      if (['control_A', 'B1', 'B2'].indexOf(S.variant) < 0) {
+        throw new Error("NeubieAB.init: variant를 결정할 수 없습니다. " +
+          "A 페이지는 init({variant:'control_A'}), B 페이지는 ?layout=vertical|horizontal 필요. 받은 값: " + S.variant);
+      }
     }
 
     // seed: ?pid=<N> 우선, 없으면 opts.seed
@@ -89,7 +93,7 @@
       S.assignment = assignMod.assign(seed);
       S.participantId = 'p' + seed; // 짝비교 키 (3개 링크 동일 seed → 동일 id)
       // 이 링크의 variant가 배정 order에 포함되는지 검증
-      if (S.assignment.order.indexOf(S.variant) < 0) {
+      if (S.variant && S.assignment.order.indexOf(S.variant) < 0) {
         console.warn('[NeubieAB] seed ' + seed + ' 배정(' + S.assignment.order.join(',') +
           ')에 이 링크 variant(' + S.variant + ')가 없습니다. 링크/순서를 확인하세요.');
       }

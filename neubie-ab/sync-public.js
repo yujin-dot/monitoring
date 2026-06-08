@@ -22,9 +22,12 @@ function cp(src, dst) { fs.copyFileSync(src, dst); console.log('  cp', path.rela
 
 // 1) 런타임 모듈
 fs.mkdirSync(path.join(PUB, 'neubie-ab'), { recursive: true });
-['assign.js', 'config.shared.js', 'neubie-ab.js'].forEach(function (f) {
+['assign.js', 'config.shared.js', 'neubie-ab.js', 'flow.js'].forEach(function (f) {
   cp(path.join(DIR, f), path.join(PUB, 'neubie-ab', f));
 });
+
+// 1b) 통합 진입 페이지
+cp(path.join(DIR, 'entry.html'), path.join(PUB, 'entry.html'));
 
 // 2) A 페이지
 var aSrc = path.join(ROOT, 'remote-control-A.html');

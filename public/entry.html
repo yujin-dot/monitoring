@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>원격제어 A/B 사용성 테스트 — 시작</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  :root{ --primary:#00BA7C; --mono-900:#1A1A1A; --mono-700:#434343; --mono-500:#7B7B7B; --mono-300:#C4C4C4; --mono-100:#E9E9E9; --mono-50:#F5F5F5; --r:10px; }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:"Pretendard",-apple-system,system-ui,sans-serif;background:var(--mono-50);color:var(--mono-900);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .card{width:100%;max-width:520px;background:#fff;border:1px solid var(--mono-100);border-radius:16px;box-shadow:0 6px 24px rgba(0,0,0,.06);padding:32px;}
+  h1{font-size:22px;font-weight:700;}
+  .sub{margin-top:8px;font-size:14px;color:var(--mono-500);line-height:1.55;}
+  .pid{margin-top:14px;font-size:13px;color:var(--mono-700);background:var(--mono-50);border:1px solid var(--mono-100);border-radius:8px;padding:10px 12px;}
+  .pid b{color:var(--primary);}
+  form{margin-top:22px;display:flex;flex-direction:column;gap:18px;}
+  .field label{display:block;font-size:14px;font-weight:600;margin-bottom:8px;}
+  .field .hint{font-weight:400;color:var(--mono-500);font-size:12px;margin-left:6px;}
+  select,input[type=number]{width:100%;height:44px;border:1px solid var(--mono-300);border-radius:8px;padding:0 12px;font-size:15px;font-family:inherit;background:#fff;color:var(--mono-900);outline:none;}
+  select:focus,input:focus{border-color:var(--primary);}
+  .seg{display:flex;gap:8px;}
+  .seg button{flex:1;height:44px;border:1px solid var(--mono-300);border-radius:8px;background:#fff;color:var(--mono-700);font:600 15px inherit;cursor:pointer;}
+  .seg button.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .hidden{display:none;}
+  .start{height:52px;border:none;border-radius:10px;background:var(--primary);color:#fff;font:700 17px inherit;cursor:pointer;margin-top:4px;}
+  .start:disabled{background:var(--mono-300);cursor:not-allowed;}
+  .err{color:#D7403B;font-size:13px;min-height:18px;}
+  .done{text-align:center;}
+  .done .big{font-size:48px;}
+  .done h1{margin-top:12px;}
+</style>
+</head>
+<body>
+  <div class="card" id="card"><!-- JS가 채움 --></div>
+
+  <!-- 공통 레이어 -->
+  <script src="/neubie-ab/assign.js"></script>
+  <script src="/neubie-ab/config.shared.js"></script>
+  <script src="/neubie-ab/neubie-ab.js"></script>
+  <script src="/neubie-ab/flow.js"></script>
+  <!-- PostHog (공식 스니펫, self-init) -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog && window.posthog.__loaded)||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="$i ji init en nn Ar tn an Yi capture calculateEventProperties dn register register_once register_for_session unregister unregister_for_session gn getFeatureFlag getFeatureFlagPayload getFeatureFlagResult isFeatureEnabled reloadFeatureFlags updateFlags updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onFeatureFlags onSurveysLoaded onSessionId getSurveys getActiveMatchingSurveys renderSurvey displaySurvey cancelPendingSurvey canRenderSurvey canRenderSurveyAsync mn identify setPersonProperties group resetGroups setPersonPropertiesForFlags resetPersonPropertiesForFlags setGroupPropertiesForFlags resetGroupPropertiesForFlags reset setIdentity clearIdentity get_distinct_id getGroups get_session_id get_session_replay_url alias set_config startSessionRecording stopSessionRecording sessionRecordingStarted captureException addExceptionStep captureLog startExceptionAutocapture stopExceptionAutocapture loadToolbar get_property getSessionProperty fn hn createPersonProfile setInternalOrTestUser pn Ji opt_in_capturing opt_out_capturing has_opted_in_capturing has_opted_out_capturing get_explicit_consent_status is_capturing clear_opt_in_out_capturing un debug Dr vn getPageViewId captureTraceFeedback captureTraceMetric Zi".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_gJCAuVDZUnrhDdm4bZ7RwgWOIQ4JEOE2urE77sKd7qT', { api_host:'https://us.i.posthog.com', defaults:'2026-05-30', person_profiles:'identified_only' })
+  </script>
+  <script>
+  (function(){
+    var qs = new URLSearchParams(location.search);
+    var card = document.getElementById('card');
+
+    // ── 종료 화면 ──
+    if (qs.get('done') === '1') {
+      NeubieFlow.clear();
+      card.innerHTML = '<div class="done"><div class="big">✅</div><h1>수고하셨습니다!</h1>'
+        + '<p class="sub">테스트가 모두 끝났습니다. 창을 닫으셔도 됩니다.</p></div>';
+      try { if (window.posthog) posthog.capture('session_complete', (NeubieConfig.posthog||{}).testMarker || {}); } catch(e){}
+      return;
+    }
+
+    var pid = qs.get('pid');
+
+    // ── 수집정보 폼 ──
+    function seg(name, opts){
+      return '<div class="seg" data-seg="'+name+'">' +
+        opts.map(function(o){ return '<button type="button" data-val="'+o.v+'">'+o.l+'</button>'; }).join('') +
+        '</div><input type="hidden" name="'+name+'" />';
+    }
+    var YN = [{v:'Y',l:'있음'},{v:'N',l:'없음'}];
+
+    card.innerHTML =
+      '<h1>원격제어 A/B 사용성 테스트</h1>'
+      + '<p class="sub">시작 전 아래 정보를 입력해주세요. 모든 항목은 분석용으로만 쓰이며, 테스트 데이터로 분리 저장됩니다.</p>'
+      + (pid ? '<div class="pid">참가자 번호 <b>#'+pid+'</b></div>'
+             : '<div class="field" style="margin-top:14px;"><label>참가자 번호 <span class="hint">진행자에게 받은 번호</span></label><input type="number" id="pidInput" min="1" placeholder="예: 1" /></div>')
+      + '<form id="f">'
+      + '<div class="field"><label>연령대</label><select name="age_band" required>'
+        + '<option value="" disabled selected>선택</option>'
+        + '<option value="20s">20대</option><option value="30s">30대</option><option value="40s">40대</option><option value="50s">50대</option><option value="60s+">60대 이상</option>'
+        + '</select></div>'
+      + '<div class="field"><label>운전면허</label>'+seg('license',YN)+'</div>'
+      + '<div class="field"><label>운전 경험 1년 이상</label>'+seg('driving_1yr',YN)+'</div>'
+      + '<div class="field"><label>관제 실무 경험</label>'+seg('ops_experience',YN)+'</div>'
+      + '<div class="field hidden" id="opsMonthsField"><label>관제 실무 기간</label><select name="ops_months">'
+        + '<option value="" disabled selected>선택</option>'
+        + '<option value="3mo">3개월 이내</option><option value="3-6mo">3~6개월</option><option value="6mo-1yr">6개월~1년</option><option value="1yr+">1년 이상</option>'
+        + '</select></div>'
+      + '<div class="field hidden" id="jobRoleField"><label>직무 <span class="hint">관제 실무 경험 없을 때</span></label><select name="job_role">'
+        + '<option value="" disabled selected>선택</option>'
+        + '<option value="FLAT">FLAT</option><option value="AUT">AUT</option><option value="OP">OP</option><option value="PROD">PROD</option><option value="BRT">BRT</option><option value="ETC">기타</option>'
+        + '</select></div>'
+      + '<div class="field"><label>도심 배달 경험</label>'+seg('urban_delivery_exp',YN)+'</div>'
+      + '<div class="err" id="err"></div>'
+      + '<button type="submit" class="start">테스트 시작 →</button>'
+      + '</form>';
+
+    var f = document.getElementById('f');
+
+    // 세그먼트(버튼형) 토글 → hidden input
+    f.querySelectorAll('[data-seg]').forEach(function(seg){
+      var hidden = f.querySelector('input[name="'+seg.getAttribute('data-seg')+'"]');
+      seg.querySelectorAll('button').forEach(function(b){
+        b.addEventListener('click', function(){
+          seg.querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
+          b.classList.add('on'); hidden.value = b.getAttribute('data-val');
+          if (seg.getAttribute('data-seg')==='ops_experience') toggleOps(hidden.value);
+        });
+      });
+    });
+    function toggleOps(v){
+      document.getElementById('opsMonthsField').classList.toggle('hidden', v!=='Y');
+      document.getElementById('jobRoleField').classList.toggle('hidden', v!=='N');
+    }
+
+    f.addEventListener('submit', function(e){
+      e.preventDefault();
+      var err = document.getElementById('err'); err.textContent='';
+      var fd = new FormData(f);
+      // pid
+      var thePid = pid || (document.getElementById('pidInput') && document.getElementById('pidInput').value);
+      if (!thePid || !(parseInt(thePid,10)>=1)) { err.textContent='참가자 번호를 입력해주세요.'; return; }
+      var profile = {
+        age_band: fd.get('age_band'),
+        license: fd.get('license'),
+        driving_1yr: fd.get('driving_1yr'),
+        ops_experience: fd.get('ops_experience'),
+        ops_months: fd.get('ops_months') || null,
+        urban_delivery_exp: fd.get('urban_delivery_exp'),
+        job_role: fd.get('job_role') || null
+      };
+      // 검증
+      var need = ['age_band','license','driving_1yr','ops_experience','urban_delivery_exp'];
+      for (var i=0;i<need.length;i++){ if(!profile[need[i]]){ err.textContent='모든 항목을 입력해주세요.'; return; } }
+      if (profile.ops_experience==='Y' && !profile.ops_months){ err.textContent='관제 실무 기간을 선택해주세요.'; return; }
+      if (profile.ops_experience==='N' && !profile.job_role){ err.textContent='직무를 선택해주세요.'; return; }
+
+      // 식별 + 흐름 시작
+      try {
+        NeubieAB.init({ seed: parseInt(thePid,10), intake: true });
+        NeubieAB.identify(profile);
+      } catch(ex){ console.warn('identify 실패', ex); }
+      NeubieFlow.start(thePid, profile);   // → 첫 트라이얼로 이동
+    });
+  })();
+  </script>
+</body>
+</html>
