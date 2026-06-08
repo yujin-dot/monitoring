@@ -29,7 +29,9 @@
     _st.textContent = '.ab-testmode #left-alert-toast,.ab-testmode #cam-alert{display:none!important;}'
       // 횡단보도 오버레이: 지도 영역(#map-section) 안에 꽉 맞게 — 영상은 가용 높이만큼만 줄이고 [횡단하기] 버튼은 항상 보이게(잘림 방지)
       + '.ab-testmode #xwalk-overlay.show{max-height:100%!important;overflow:hidden!important;}'
-      + '.ab-testmode #xwalk-overlay.show #xwalk-media{flex:1 1 auto!important;min-height:0!important;aspect-ratio:auto!important;height:auto!important;}';
+      + '.ab-testmode #xwalk-overlay.show #xwalk-media{flex:1 1 auto!important;min-height:0!important;aspect-ratio:auto!important;height:auto!important;}'
+      // vertical(layout-b): 지도가 min-height:340px 때문에 하단 220px 섹션을 넘쳐 화면 밖으로 잘림 → 섹션에 맞춤
+      + 'body.layout-b.ab-testmode #map-section{min-height:0!important;height:100%!important;}';
     document.head.appendChild(_st);
 
     var qs = new URLSearchParams(location.search);
