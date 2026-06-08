@@ -33,9 +33,8 @@
       + '.ab-testmode #cam-upload-overlay{display:none!important;}'
       // (4) 로봇 설정 ON 색상을 tertiary-300(오렌지)로 통일 (헤드램프/게임패드 등 .on이 초록이던 것)
       + '.ab-testmode .ctrl-btn.on{color:#F8914A!important;border-color:rgba(248,145,74,0.5)!important;}'
-      // (1) 횡단보도 오버레이: 지도 위 작은 카드 + 클릭 통과(버튼만 클릭) → 지도 줌/이동 그대로 사용 가능
-      + '.ab-testmode #xwalk-overlay.show{top:auto!important;bottom:12px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;width:280px!important;max-width:calc(100% - 24px)!important;max-height:calc(100% - 24px)!important;overflow:hidden!important;pointer-events:none!important;}'
-      + '.ab-testmode #xwalk-overlay.show #xwalk-media{aspect-ratio:16/9!important;height:auto!important;max-height:140px!important;flex:0 0 auto!important;}'
+      // (1) 횡단보도 오버레이: 원래 위치 유지(가로=지도 상단, 세로=지도 우측). 오버레이는 클릭 통과시키고 버튼만 클릭 → 지도 줌/이동 그대로
+      + '.ab-testmode #xwalk-overlay.show{pointer-events:none!important;}'
       + '.ab-testmode #xwalk-overlay.show #xwalk-btn{pointer-events:auto!important;}'
       // vertical(layout-b): 지도가 min-height:340px 때문에 하단 220px 섹션을 넘쳐 화면 밖으로 잘림 → 섹션에 맞춤
       + 'body.layout-b.ab-testmode #map-section{min-height:0!important;height:100%!important;}';
