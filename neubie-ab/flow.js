@@ -80,46 +80,63 @@
   }
 
   // ── SUS 설문 오버레이 (시안별 전체 시나리오 종료 시) ──────────
+  //  한 문항씩 순차 노출(응답하면 다음 문항 등장) · 중앙 정렬 · 전부 응답 시 하단 고정 [제출하고 계속]
   function showSus(variant, onDone) {
     var sus = cfg().sus || {}; var qs = sus.questions || [];
     if (!qs.length) { onDone(); return; }
+    var scale = sus.scale || 5;
     var vLabel = variant === 'control_A' ? 'A' : variant === 'B1' ? 'B(세로)' : variant === 'B2' ? 'B(가로)' : (variant || '');
     var rows = qs.map(function (q, i) {
       var opts = '';
-      for (var v = 1; v <= (sus.scale || 5); v++) {
-        opts += '<label style="display:inline-flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;flex:1;">'
-          + '<input type="radio" name="sus' + i + '" value="' + v + '" style="width:22px;height:22px;accent-color:' + PRIMARY + ';">'
-          + '<span style="font-size:12px;color:#9DA3AA;">' + v + '</span></label>';
+      for (var v = 1; v <= scale; v++) {
+        opts += '<label style="display:inline-flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;flex:1;">'
+          + '<input type="radio" name="sus' + i + '" value="' + v + '" style="width:24px;height:24px;accent-color:' + PRIMARY + ';">'
+          + '<span style="font-size:13px;color:#9DA3AA;">' + v + '</span></label>';
       }
-      return '<div data-q="' + i + '" style="padding:16px 0;border-bottom:1px solid #23262B;">'
-        + '<div style="font-size:15px;color:#E9E9E9;line-height:1.5;margin-bottom:10px;">' + (i + 1) + '. ' + q + '</div>'
-        + '<div style="display:flex;gap:6px;max-width:340px;">' + opts + '</div></div>';
+      // 1번만 처음에 보이고, 응답하면 다음 문항이 등장
+      return '<div class="sus-q" data-q="' + i + '" style="display:' + (i === 0 ? 'block' : 'none') + ';padding:22px 0;border-top:' + (i === 0 ? 'none' : '1px solid #23262B') + ';">'
+        + '<div style="font-size:17px;font-weight:600;color:#F2F2F2;line-height:1.5;margin-bottom:16px;">' + (i + 1) + '. ' + q + '</div>'
+        + '<div style="display:flex;gap:8px;max-width:360px;margin:0 auto;">' + opts + '</div></div>';
     }).join('');
     var o = document.createElement('div');
     o.id = 'neubie-flow-ovl';
-    o.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#0E0F11;color:#fff;overflow-y:auto;'
-      + 'font-family:Pretendard,-apple-system,system-ui,sans-serif;padding:40px 20px 60px;';
-    o.innerHTML = '<div style="max-width:560px;margin:0 auto;">'
+    o.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#0E0F11;color:#fff;overflow-y:auto;text-align:center;'
+      + 'font-family:Pretendard,-apple-system,system-ui,sans-serif;padding:48px 20px 120px;';
+    o.innerHTML = '<div style="max-width:520px;margin:0 auto;">'
       + '<div style="font-size:13px;font-weight:700;color:' + PRIMARY + ';letter-spacing:.04em;">' + vLabel + ' 시안 사용성 평가</div>'
       + '<h2 style="font-size:24px;font-weight:800;margin:6px 0 4px;">방금 사용한 화면은 어땠나요?</h2>'
-      + '<p style="font-size:14px;color:#9DA3AA;margin:0 0 8px;line-height:1.6;">각 문항에 1(' + (sus.anchorLow || '전혀 그렇지 않다') + ') ~ ' + (sus.scale || 5) + '(' + (sus.anchorHigh || '매우 그렇다') + ')로 응답해주세요.</p>'
+      + '<p style="font-size:14px;color:#9DA3AA;margin:0 0 8px;line-height:1.6;">1(' + (sus.anchorLow || '전혀 그렇지 않다') + ') ~ ' + scale + '(' + (sus.anchorHigh || '매우 그렇다') + ')로 응답해주세요.</p>'
+      + '<div id="sus-progress" style="font-size:13px;color:#7B8088;margin-bottom:4px;">1 / ' + qs.length + '</div>'
       + '<div id="sus-rows">' + rows + '</div>'
-      + '<div id="sus-err" style="color:#FA5952;font-size:13px;margin-top:14px;min-height:18px;"></div>'
-      + '<button id="sus-submit" style="width:100%;height:54px;margin-top:6px;border:none;border-radius:12px;background:' + PRIMARY + ';color:#fff;font:800 17px Pretendard,system-ui,sans-serif;cursor:pointer;">제출하고 계속</button>'
-      + '</div>';
+      + '</div>'
+      // 하단 고정 제출 바 (전부 응답 시 노출)
+      + '<div id="sus-bar" style="display:none;position:fixed;left:0;right:0;bottom:0;padding:16px 20px;'
+        + 'background:linear-gradient(180deg,rgba(14,15,17,0),#0E0F11 38%);">'
+        + '<button id="sus-submit" style="display:block;width:100%;max-width:520px;margin:0 auto;height:54px;border:none;border-radius:12px;'
+        + 'background:' + PRIMARY + ';color:#fff;font:800 17px Pretendard,system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.4);">제출하고 계속</button></div>';
     removeOverlay();
     (document.body || document.documentElement).appendChild(o);
+
+    function answeredCount() { var c = 0; for (var i = 0; i < qs.length; i++) if (o.querySelector('input[name="sus' + i + '"]:checked')) c++; return c; }
+    o.addEventListener('change', function (e) {
+      var t = e.target; if (!t || !t.name || t.name.indexOf('sus') !== 0) return;
+      var idx = parseInt(t.name.slice(3), 10);
+      var nxt = o.querySelector('div[data-q="' + (idx + 1) + '"]');
+      if (nxt && nxt.style.display === 'none') {
+        nxt.style.display = 'block';
+        if (nxt.scrollIntoView) { try { nxt.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e2) {} }
+      }
+      var done = answeredCount();
+      var prog = document.getElementById('sus-progress'); if (prog) prog.textContent = done + ' / ' + qs.length;
+      if (done === qs.length) {
+        var bar = document.getElementById('sus-bar');
+        if (bar && bar.style.display === 'none') { bar.style.display = 'block'; if (bar.scrollIntoView) { try { bar.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (e3) {} } }
+      }
+    });
     document.getElementById('sus-submit').onclick = function () {
-      var answers = [], missing = false;
-      for (var i = 0; i < qs.length; i++) {
-        var sel = o.querySelector('input[name="sus' + i + '"]:checked');
-        if (!sel) { missing = true; answers.push(null); } else answers.push(Number(sel.value));
-      }
-      if (missing) {
-        document.getElementById('sus-err').textContent = '모든 문항에 응답해주세요.';
-        var firstMissing = o.querySelector('div[data-q] input:not(:checked)');
-        return;
-      }
+      var answers = [];
+      for (var i = 0; i < qs.length; i++) { var sel = o.querySelector('input[name="sus' + i + '"]:checked'); answers.push(sel ? Number(sel.value) : null); }
+      if (answers.some(function (a) { return !a; })) return; // 바는 전부 응답 시에만 보이지만 안전장치
       try { if (window.NeubieAB && NeubieAB.submitSus) NeubieAB.submitSus(answers, variant); } catch (e) {}
       removeOverlay();
       onDone();
