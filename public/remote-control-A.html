@@ -877,21 +877,38 @@
   //   ops_experience:'Y', ops_months:'6mo-1yr', urban_delivery_exp:'N', job_role:'OP' });
 
   // ── 카메라 영상: ?scenario=N 있으면 해당 시나리오(계측 포함), 없으면 기본 피드 ──
+  //  ⚠️ 흐름 세션에선 [시작] 클릭 전까지 영상/상태/알림 등 아무것도 시작하지 않음 → startA를 __neubieScenarioStart로 노출.
   (function () {
     var cam = document.getElementById('cam-video');
     if (!cam) return;
-    var sc = parseInt(new URLSearchParams(location.search).get('scenario'), 10);
-    if (sc) {
-      NeubieAB.startTrial(sc);
-      NeubieAB.loadScenarioVideo(cam, sc); // S3=배정된 taxi/bump, 그 외=scenario.video
-      NeubieAB.bindVideo(cam, sc);         // video-trigger 시나리오는 트리거 시점 자동 markStimulus
-      if (window.applyScenario) window.applyScenario(sc); // 상태 수치/설정 + 스텝 이동 반영
-    } else {
-      cam.src = (window.NeubieConfig && NeubieConfig.defaultVideo) || ''; // 시나리오 미지정 → 기본 피드
+    var qs = new URLSearchParams(location.search);
+    var sc = parseInt(qs.get('scenario'), 10);
+    var pid = qs.get('pid');
+
+    function startA() {
+      if (sc) {
+        NeubieAB.startTrial(sc);             // 마우스 트래킹 시작 시점도 여기
+        NeubieAB.loadScenarioVideo(cam, sc); // src 설정(자동 load). S3=배정된 taxi/bump, 그 외=scenario.video
+        NeubieAB.bindVideo(cam, sc);         // video-trigger 시나리오는 트리거 시점 자동 markStimulus
+        if (window.applyScenario) window.applyScenario(sc); // 상태 수치/설정 + 스텝 + 알림(runScenarioAlerts)
+      } else {
+        cam.src = (window.NeubieConfig && NeubieConfig.defaultVideo) || ''; // 시나리오 미지정 → 기본 피드
+      }
+      if (sc === 2) {                        // S2: [횡단하기] 전까지 메인 영상 정지
+        cam.removeAttribute('autoplay'); try { cam.currentTime = 0; } catch (e) {} cam.pause();
+      } else {                               // 그 외: 재생(autoplay 안전망 + canplay 핸들러로 load 경쟁 회피)
+        cam.setAttribute('autoplay', '');
+        var tryPlay = function () { var p = cam.play(); if (p && p.catch) p.catch(function () {}); };
+        if (cam.readyState >= 2) tryPlay(); else cam.addEventListener('canplay', tryPlay, { once: true });
+      }
     }
-    if (cam.load) cam.load();
-    if (sc === 2) { cam.removeAttribute('autoplay'); try { cam.currentTime = 0; } catch (e) {} cam.pause(); } // S2: [횡단하기] 전까지 메인 영상 정지
-    else if (cam.play) cam.play().catch(function () {});
+    window.__neubieScenarioStart = startA;   // flow [시작하기]가 호출
+
+    // 시작 전엔 아무것도 재생하지 않음(빈 상태로 정지)
+    cam.removeAttribute('autoplay'); try { cam.pause(); } catch (e) {}
+
+    // 흐름 세션(?pid + flow active + sc)이면 [시작]에서 startA. 아니면(직접 URL 테스트) 즉시 시작.
+    if (!(window.NeubieFlow && pid && window.NeubieFlow.active && NeubieFlow.active(pid) && sc)) startA();
   })();
   // 응답(T3) 훅은 [횡단하기]·[주행 불가능] 등 액션 버튼 구현 후 연결
   //   (예: btnArrive.addEventListener('click', () => NeubieAB.markResponse({})); )

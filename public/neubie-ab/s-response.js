@@ -73,8 +73,8 @@
 
   function init() {
     if (sc === 1) {
-      // 시작(인트로 닫힘) → T1 + 10초 카운트다운 → 에러 케이스 선택
-      function startS1() { markStim(); runCountdown(10, showS1Select); }
+      // 시작(인트로 닫힘) → T1 + 3초 카운트다운 → 에러 케이스 선택
+      function startS1() { markStim(); runCountdown(3, showS1Select); }
       var ovl = document.getElementById('neubie-flow-ovl');
       if (ovl && window.MutationObserver) {
         var mo = new MutationObserver(function () { if (!document.getElementById('neubie-flow-ovl')) { mo.disconnect(); startS1(); } });
