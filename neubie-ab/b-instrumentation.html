@@ -196,19 +196,37 @@
         var s2play = function () { cam.playbackRate = 0.5; if (cam.play) cam.play().catch(function () {}); };
         if (cam.readyState >= 2) s2play(); else cam.addEventListener('canplay', s2play, { once: true });
       }
+      // 폴리라인 t(0~1) 위치 + 진행 방향(deg, up=0)
+      function ptAt(p, tt) {
+        var segs = [], tot = 0, i;
+        for (i = 0; i < p.length - 1; i++) { var dx = p[i + 1].x - p[i].x, dy = p[i + 1].y - p[i].y; var l = Math.sqrt(dx * dx + dy * dy); segs.push(l); tot += l; }
+        var tg = tt * tot, ac = 0;
+        for (i = 0; i < segs.length; i++) {
+          if (ac + segs[i] >= tg && segs[i] > 0) { var f = (tg - ac) / segs[i], ax = p[i].x, ay = p[i].y, bx = p[i + 1].x, by = p[i + 1].y; return { x: ax + (bx - ax) * f, y: ay + (by - ay) * f, ang: Math.atan2(by - ay, bx - ax) * 180 / Math.PI + 90 }; }
+          ac += segs[i];
+        }
+        var n = p.length - 1; return { x: p[n].x, y: p[n].y, ang: Math.atan2(p[n].y - p[n - 1].y, p[n].x - p[n - 1].x) * 180 / Math.PI + 90 };
+      }
+      if (sc === 5) {
+        // S5: 로봇을 경로 중간에 정지(움직이지 않음)
+        if (!window.__s5Timer) window.__s5Timer = setInterval(function () {
+          try { var w = state.waypoints; if (!w || !w.length) return; var mp = ptAt(w, 0.5); state.rx = mp.x; state.ry = mp.y; state.angle = mp.ang; state.speed = 0; state.speedTarget = 0; state.wpIdx = Math.max(0, Math.floor(w.length / 2)); } catch (e) {}
+        }, 120);
+      }
       if (sc === 6) {
         cam.loop = false;   // S6 도착영상은 반복하지 않고 끝에서 정지(보기 모드 포함)
-        // 영상 11초 시점 → 로봇을 도착 마커(0.75,0.78) 바로 앞에 고정 + 정지(속도 0.00)
-        var s6arrived = false;
-        cam.addEventListener('timeupdate', function () {
-          if (s6arrived || cam.currentTime < 11) return;
-          s6arrived = true;
+        // 로봇이 경로 중간→도착 마커까지 '초록선을 따라' 이동(영상시간 기반, 11초에 도착 마커 도달) → 11초에 속도 0.00
+        if (!window.__s6Timer) window.__s6Timer = setInterval(function () {
           try {
-            state.speed = 0; state.speedTarget = 0;
-            if (state.waypoints && state.waypoints.length) state.wpIdx = state.waypoints.length - 1;
-            state.rx = 0.75; state.ry = 0.70; // 도착 마커 바로 앞
+            var w = state.waypoints; if (!w || !w.length) return;
+            var ct = cam.currentTime || 0;
+            var tt = Math.max(0.5, Math.min(1.0, 0.5 + 0.5 * (ct / 11)));
+            var pp = ptAt(w, tt);
+            state.wpIdx = w.length - 1;                 // 엔진 자동이동 차단(도착 처리)
+            state.rx = pp.x; state.ry = pp.y; state.angle = pp.ang;
+            if (ct >= 11) { state.speed = 0; state.speedTarget = 0; } // 도착 → 정지(속도 0.00)
           } catch (e) {}
-        });
+        }, 80);
       }
     }
     window.__neubieScenarioStart = setupScenario; // flow가 [시작하기]에서 호출
