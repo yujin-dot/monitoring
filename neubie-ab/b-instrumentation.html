@@ -150,8 +150,8 @@
       var prev = row.innerHTML, prevStyle = row.getAttribute('style') || '';
       row.style.position = 'relative'; row.style.overflow = 'hidden';
       row.innerHTML = '<div style="position:absolute;left:0;top:0;bottom:0;width:0;background:#00BA7C;animation:vpbFill 2.4s linear forwards;"></div>'
-        + '<span style="position:relative;z-index:1;flex:1;color:#fff;font-size:13px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.3);">🔊 뉴비 지나갈게요</span>'
-        + '<button class="vpb-stop" style="position:relative;z-index:1;width:28px;height:28px;border-radius:6px;border:1px solid #C4C4C4;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;"><span style="width:10px;height:10px;background:#262626;border-radius:2px;display:block;"></span></button>';
+        + '<span style="position:relative;z-index:1;flex:1;color:#fff;font-size:13px;font-weight:700;text-shadow:0 1px 2px rgba(0,0,0,.3);">뉴비 지나갈게요</span>'
+        + '<button class="vpb-stop" style="position:relative;z-index:1;width:28px;height:28px;border-radius:6px;border:none;background:#434343;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;"><span style="width:10px;height:10px;background:#E9E9E9;border-radius:2px;display:block;"></span></button>';
       var restore = function () { row.innerHTML = prev; row.setAttribute('style', prevStyle); row.dataset.vp = ''; };
       var timer = setTimeout(restore, 2600);
       var st = row.querySelector('.vpb-stop');
@@ -191,7 +191,7 @@
       NeubieAB.bindVideo(cam, sc); // video-trigger(S2·S3·S6) 트리거 시점 자동 markStimulus
       scheduleAlerts(sc);          // 시나리오 알림 로그 시점대로 표시
       // 재생 중 10초마다 음원 재생 표시('문장 입력 송출' 행 → '뉴비 지나갈게요' 초록 채움바 → 복귀)
-      if (!window.__voicePingTimer) window.__voicePingTimer = setInterval(function () { if (cam && !cam.paused) playVoiceB(); }, 10000);
+      if (!window.__voicePingTimer) window.__voicePingTimer = setInterval(function () { if (cam && !cam.paused) playVoiceB(); }, 5000);
       if (sc === 2) {              // S2: 6캠 영상을 0.5배속으로 천천히 재생(정지처럼 보이던 문제 해소)
         var s2play = function () { cam.playbackRate = 0.5; if (cam.play) cam.play().catch(function () {}); };
         if (cam.readyState >= 2) s2play(); else cam.addEventListener('canplay', s2play, { once: true });

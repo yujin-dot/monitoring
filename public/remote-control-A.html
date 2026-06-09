@@ -230,8 +230,7 @@
   .btn.block.voice-playing { position: relative; overflow: hidden; border-color: var(--primary-500); }
   .btn.block.voice-playing .vp-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--primary-500); animation: vpFillA 2.4s linear forwards; }
   @keyframes vpFillA { from { width: 0; } to { width: 100%; } }
-  .btn.block.voice-playing .vp-label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
-  .btn.block.voice-playing .vp-label svg { width: 18px; height: 18px; }
+  .btn.block.voice-playing .vp-label { position: relative; z-index: 1; display: inline-flex; align-items: center; color: var(--mono-800); font-weight: 700; }
 
   /* ── 알림 팝업 (Alerts: Light) — 토스트 오버레이(레이아웃 영향 없음), 같은 위치에 겹쳐 쌓임(최신 앞) ── */
   #alert-stack { position: fixed; top: 85px; left: 72px; right: 320px; height: 44px; z-index: 40; pointer-events: none; }
@@ -988,16 +987,14 @@
       b.dataset.vp = '1';
       var prev = b.innerHTML;
       b.classList.add('voice-playing');
-      b.innerHTML = '<span class="vp-fill"></span><span class="vp-label">'
-        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19 5a9 9 0 010 14M16 8a5 5 0 010 8"/></svg>'
-        + '뉴비 지나갈게요</span>';
+      b.innerHTML = '<span class="vp-fill"></span><span class="vp-label">뉴비 지나갈게요</span>';
       setTimeout(function () { b.classList.remove('voice-playing'); b.innerHTML = prev; b.dataset.vp = ''; }, 2600);
     }
     function startVoicePing(cam) {
       if (window.__voicePingTimer) return;
       window.__voicePingTimer = setInterval(function () {
         if (cam && !cam.paused) playVoiceA();   // 재생 중일 때만
-      }, 10000);
+      }, 5000);
     }
     window.__neubieScenarioStart = startA;   // flow [시작하기]가 호출
 
