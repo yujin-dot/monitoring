@@ -73,7 +73,7 @@
     font-size: 12px; color: var(--mono-600); }
   .header-stats .vsep { width: 1px; height: 11px; background: var(--mono-200); }
   .header-stats b { font-weight: 600; color: var(--mono-800); }
-  .header-stats .warn { color: var(--tertiary-300); font-weight: 600; }
+  .header-stats .warn { color: #FA5952; font-weight: 600; }
 
   /* Content */
   .content { flex: 1; display: flex; min-height: 0; }
@@ -347,9 +347,9 @@
         <span class="vsep"></span>
         <span>현재 속도 <b id="st-speed">0.00m/s</b></span>
         <span class="vsep"></span>
-        <span>설정 회전속도 <b>5</b></span>
+        <span>설정 회전속도 <b id="st-setrot">-</b></span>
         <span class="vsep"></span>
-        <span>설정 속도 <b>5</b></span>
+        <span>설정 속도 <b id="st-setspeed">-</b></span>
         <span class="vsep"></span>
         <span>충전량 <b id="st-batt">100%</b></span>
       </div>
@@ -675,6 +675,10 @@
     set('st-pitch', s.pitch_deg + '°');
     set('st-roll', s.roll_deg + '°');
     set('st-cargo', s.cargo);
+    // 자율주행 모드(게임패드 OFF)면 설정 회전속도/속도를 '-'로, 수동(게임패드 ON)이면 값 표시
+    var autonomous = s.gamepad !== 'ON';
+    set('st-setrot', autonomous ? '-' : '5');
+    set('st-setspeed', autonomous ? '-' : '5');
     var wifi = document.getElementById('st-wifi');
     if (wifi) { var warn = Number(s.wifi_ms) > 150; wifi.textContent = (warn ? '주의 ' : '') + s.wifi_ms + 'ms'; wifi.classList.toggle('warn', warn); }
     var pr = document.getElementById('pitchRobot'); if (pr) pr.style.setProperty('--rot', s.pitch_deg + 'deg');
