@@ -21,7 +21,8 @@ var HEADERS = {
     'stimulus_video','sub_test','block_position','is_first_exposure','perception_ms','response_ms','total_ms',
     'braking_latency_ms','anomaly_ms','movement_time_ms','fitts_id','overshoot_count','mouse_path_px',
     'success','timeout','error','correct','selected',
-    'top_region','top_region_dwell_ms','mouse_samples','total_clicks','region_dwell_json','click_points_json']
+    'top_region','top_region_dwell_ms','mouse_samples','total_clicks','region_dwell_json','click_points_json',
+    'primary_metric','primary_value','primary_unit','primary_outcome','primary_pass']
 };
 
 function tabFor(type) { return type === 'participant' ? 'participants' : 'trials'; }

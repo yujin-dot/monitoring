@@ -76,6 +76,18 @@
       ]
     },
 
+    // ── 시나리오별 '주요 측정 지표'(테스트 계획) ──────────────────
+    //  각 trial 행에 헤드라인 지표를 명시적으로 기록: primary_metric(이름)/primary_value(값)/
+    //  primary_unit(단위)/primary_outcome(판정)/primary_pass(성공여부).
+    //  value = 해당 시나리오의 핵심 시간지표 필드명(ms). 품질 판정은 시나리오별 success/correct/timeout/error로 산출.
+    primaryMetrics: {
+      1: { name: '판단 시간(정답 여부)', value: 'total_ms',           unit: 'ms' }, // 정답률(correct)이 핵심, 시간은 관찰+판단 포함
+      2: { name: '신호 반응 시간',       value: 'response_ms',        unit: 'ms' }, // 점등 후 [횡단하기]까지 (제한 2초)
+      3: { name: '비상제동 딜레이',      value: 'braking_latency_ms', unit: 'ms' }, // 돌출 시점→사이드브레이크 ON
+      5: { name: '정밀제어 이동 시간',   value: 'movement_time_ms',   unit: 'ms' }, // +fitts_id/overshoot_count 동반
+      6: { name: '도착 반응 시간',       value: 'response_ms',        unit: 'ms' }  // 도착알림→도착처리 (클릭창 0~2초)
+    },
+
     // ── Google Sheets 기록 (Apps Script 웹앱) ──
     // 빈 시트 + Apps Script doPost 배포 후 그 웹앱 URL을 endpoint에 넣으면 활성화. 그 전엔 no-op.
     sheets: {

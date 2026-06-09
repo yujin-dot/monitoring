@@ -447,6 +447,21 @@
       sc.firstExposureOnly.forEach(function (k) { delete ev[k]; });
     }
 
+    // 주요 측정 지표(테스트 계획) — 시나리오별 헤드라인 지표를 행마다 명시
+    //  primary_metric(이름)·primary_value(값)·primary_unit(단위)·primary_outcome(판정)·primary_pass(성공)
+    var pmCfg = S.config.primaryMetrics && S.config.primaryMetrics[t.ctx.scenario];
+    if (pmCfg) {
+      ev.primary_metric = pmCfg.name;
+      ev.primary_value = (ev[pmCfg.value] != null) ? ev[pmCfg.value] : null;
+      ev.primary_unit = pmCfg.unit;
+      ev.primary_pass = (ev.success === true);
+      ev.primary_outcome = (t.ctx.scenario === 1)
+        ? (ev.correct === true ? '정답' : (ev.correct === false ? '오답' : '미상'))
+        : (ev.timeout === true ? '시간초과'
+          : (ev.error === true ? '오류'
+          : (ev.success === true ? '성공' : (ev.success === false ? '실패' : '미상'))));
+    }
+
     // 마우스 체류(AOI)/클릭 집계 종료 → 결과 병합 (PostHog 속성 + Sheets 컬럼)
     stopMouseTracking();
     var ms = mouseSummary();
