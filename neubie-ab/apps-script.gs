@@ -22,10 +22,16 @@ var HEADERS = {
     'braking_latency_ms','anomaly_ms','movement_time_ms','fitts_id','overshoot_count','mouse_path_px',
     'success','timeout','error','correct','selected',
     'top_region','top_region_dwell_ms','mouse_samples','total_clicks','region_dwell_json','click_points_json',
-    'primary_metric','primary_value','primary_unit','primary_outcome','primary_pass']
+    'primary_metric','primary_value','primary_unit','primary_outcome','primary_pass'],
+  sus: ['type','ts','test_suite','is_test','environment','participant_id','nickname','track','ui_variant','sus_score','sus_answered',
+    'sus_q1','sus_q2','sus_q3','sus_q4','sus_q5','sus_q6','sus_q7','sus_q8','sus_q9','sus_q10']
 };
 
-function tabFor(type) { return type === 'participant' ? 'participants' : 'trials'; }
+function tabFor(type) {
+  if (type === 'participant') return 'participants';
+  if (type === 'sus') return 'sus';
+  return 'trials';
+}
 
 // 시트 헤더 행을 HEADERS 기준으로 보정:
 //  - 빈 시트면 헤더 행 생성

@@ -68,8 +68,62 @@
   function next() {
     var f = load(); if (!f) return;
     var pid = f.pid, seq = buildSequence(pid), i = currentIndex(pid, seq), ni = (i < 0 ? 0 : i) + 1;
-    if (ni < seq.length) location.href = seq[ni].url;
-    else location.href = '/entry.html?pid=' + pid + '&done=1';
+    var go = function () {
+      if (ni < seq.length) location.href = seq[ni].url;
+      else location.href = '/entry.html?pid=' + pid + '&done=1';
+    };
+    // 시안 블록 경계(해당 시안의 마지막 시나리오 완료) → SUS 설문 후 진행
+    var cur = seq[i];
+    var boundary = cur && (ni >= seq.length || !seq[ni] || seq[ni].variant !== cur.variant);
+    if (boundary) { showSus(cur.variant, go); return; }
+    go();
+  }
+
+  // ── SUS 설문 오버레이 (시안별 전체 시나리오 종료 시) ──────────
+  function showSus(variant, onDone) {
+    var sus = cfg().sus || {}; var qs = sus.questions || [];
+    if (!qs.length) { onDone(); return; }
+    var vLabel = variant === 'control_A' ? 'A' : variant === 'B1' ? 'B(세로)' : variant === 'B2' ? 'B(가로)' : (variant || '');
+    var rows = qs.map(function (q, i) {
+      var opts = '';
+      for (var v = 1; v <= (sus.scale || 5); v++) {
+        opts += '<label style="display:inline-flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;flex:1;">'
+          + '<input type="radio" name="sus' + i + '" value="' + v + '" style="width:22px;height:22px;accent-color:' + PRIMARY + ';">'
+          + '<span style="font-size:12px;color:#9DA3AA;">' + v + '</span></label>';
+      }
+      return '<div data-q="' + i + '" style="padding:16px 0;border-bottom:1px solid #23262B;">'
+        + '<div style="font-size:15px;color:#E9E9E9;line-height:1.5;margin-bottom:10px;">' + (i + 1) + '. ' + q + '</div>'
+        + '<div style="display:flex;gap:6px;max-width:340px;">' + opts + '</div></div>';
+    }).join('');
+    var o = document.createElement('div');
+    o.id = 'neubie-flow-ovl';
+    o.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#0E0F11;color:#fff;overflow-y:auto;'
+      + 'font-family:Pretendard,-apple-system,system-ui,sans-serif;padding:40px 20px 60px;';
+    o.innerHTML = '<div style="max-width:560px;margin:0 auto;">'
+      + '<div style="font-size:13px;font-weight:700;color:' + PRIMARY + ';letter-spacing:.04em;">' + vLabel + ' 시안 사용성 평가</div>'
+      + '<h2 style="font-size:24px;font-weight:800;margin:6px 0 4px;">방금 사용한 화면은 어땠나요?</h2>'
+      + '<p style="font-size:14px;color:#9DA3AA;margin:0 0 8px;line-height:1.6;">각 문항에 1(' + (sus.anchorLow || '전혀 그렇지 않다') + ') ~ ' + (sus.scale || 5) + '(' + (sus.anchorHigh || '매우 그렇다') + ')로 응답해주세요.</p>'
+      + '<div id="sus-rows">' + rows + '</div>'
+      + '<div id="sus-err" style="color:#FA5952;font-size:13px;margin-top:14px;min-height:18px;"></div>'
+      + '<button id="sus-submit" style="width:100%;height:54px;margin-top:6px;border:none;border-radius:12px;background:' + PRIMARY + ';color:#fff;font:800 17px Pretendard,system-ui,sans-serif;cursor:pointer;">제출하고 계속</button>'
+      + '</div>';
+    removeOverlay();
+    (document.body || document.documentElement).appendChild(o);
+    document.getElementById('sus-submit').onclick = function () {
+      var answers = [], missing = false;
+      for (var i = 0; i < qs.length; i++) {
+        var sel = o.querySelector('input[name="sus' + i + '"]:checked');
+        if (!sel) { missing = true; answers.push(null); } else answers.push(Number(sel.value));
+      }
+      if (missing) {
+        document.getElementById('sus-err').textContent = '모든 문항에 응답해주세요.';
+        var firstMissing = o.querySelector('div[data-q] input:not(:checked)');
+        return;
+      }
+      try { if (window.NeubieAB && NeubieAB.submitSus) NeubieAB.submitSus(answers, variant); } catch (e) {}
+      removeOverlay();
+      onDone();
+    };
   }
 
   // ── 오버레이 UI ──────────────────────────────────────────────

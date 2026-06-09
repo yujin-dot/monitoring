@@ -412,6 +412,37 @@
     };
   }
 
+  // ── SUS 설문 제출 → sus_result 전송 (PostHog + Sheets) ────────
+  // answers = [q1..qN] (1~5). 표준 SUS 채점: positive(홀수)=답-1, negative(짝수)=5-답, 합×2.5 → 0~100.
+  function submitSus(answers, variant) {
+    answers = answers || [];
+    if (S.preview) { console.log('[NeubieAB][preview] sus 생략'); return; }
+    var susCfg = (S.config && S.config.sus) || {};
+    var qs = susCfg.questions || [];
+    var n = qs.length || answers.length;
+    var pos = susCfg.positive || [1, 3, 5, 7, 9];
+    var sum = 0, answered = 0;
+    for (var i = 0; i < n; i++) {
+      var a = Number(answers[i]);
+      if (!a) continue;
+      answered++;
+      sum += (pos.indexOf(i + 1) >= 0) ? (a - 1) : (5 - a);
+    }
+    var score = (answered === n && n > 0) ? Math.round(sum * 2.5 * 10) / 10 : null; // 0~100
+    var ev = {
+      participant_id: S.participantId,
+      nickname: S.nickname,
+      track: S.assignment ? S.assignment.track : null,
+      ui_variant: variant || S.variant,
+      sus_score: score,
+      sus_answered: answered + '/' + n
+    };
+    for (var j = 0; j < n; j++) ev['sus_q' + (j + 1)] = Number(answers[j]) || null;
+    _capture('sus_result', ev);
+    sheetSend('sus', ev);
+    return ev;
+  }
+
   // ── markResponse → trial_result 전송 ─────────────────────────
   function markResponse(result) {
     var t = _requireTrial('markResponse');
@@ -566,6 +597,7 @@
     markStimulus: markStimulus,
     markCognition: markCognition,
     markResponse: markResponse,
+    submitSus: submitSus,
     bindVideo: bindVideo,
     loadScenarioVideo: loadScenarioVideo,
     trackClickTarget: trackClickTarget,
