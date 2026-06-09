@@ -45,7 +45,7 @@
   // S1: 10초 카운트다운 후 콜백
   function runCountdown(sec, cb) {
     var t = document.createElement('div'); t.id = 's1-countdown';
-    t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:90000;background:#00684A;color:#fff;'
+    t.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90000;background:#00684A;color:#fff;'
       + 'font:700 15px Pretendard,system-ui,sans-serif;padding:12px 18px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.3);';
     var n = sec; t.textContent = '로봇 정보를 확인하세요 · ' + n + '초';
     document.body.appendChild(t);
