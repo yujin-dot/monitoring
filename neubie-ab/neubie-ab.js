@@ -177,6 +177,7 @@
       scenario: scenario,
       participant_id: S.participantId,
       nickname: S.nickname,
+      track: a ? a.track : null,          // 짝비교(A↔B, 트랙 내 동일 참가자) 키
       ui_variant: S.variant,
       stimulus_video: (scenario === 3 && a) ? a.s3Video[S.variant] : null,
       sub_test: (scenario === 1 && a) ? a.s1Sub[S.variant] : null,
