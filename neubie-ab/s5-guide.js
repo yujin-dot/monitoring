@@ -79,14 +79,8 @@
       + '<span style="width:36px;font-size:14px;color:#434343;flex-shrink:0;">' + label + '</span>'
       + '<div style="flex:1;display:flex;gap:10px;">' + b1 + b2 + '</div></div>';
   }
-  function openDrawer() {
-    var d = document.createElement('div');
-    d.id = 'ev-drawer';
-    d.style.cssText = 'position:fixed;top:0;right:0;bottom:0;z-index:' + (Z + 2) + ';width:330px;max-width:92vw;background:#fff;'
-      + 'box-shadow:-4px 0 24px rgba(0,0,0,.18);display:flex;flex-direction:column;font-family:Pretendard,system-ui,sans-serif;'
-      + 'transform:translateX(100%);transition:transform .22s ease;';
-    d.innerHTML =
-      '<div style="padding:20px 20px 14px;display:flex;align-items:center;justify-content:space-between;">'
+  function drawerContent() {
+    return '<div style="padding:20px 20px 14px;display:flex;align-items:center;justify-content:space-between;">'
         + '<b style="font-size:18px;color:#1A1A1A;">엘리베이터</b>'
         + '<button id="ev-drawer-x" style="border:none;background:none;font-size:22px;color:#262626;cursor:pointer;line-height:1;">×</button></div>'
       + '<div style="padding:0 20px;display:flex;flex-direction:column;gap:16px;">'
@@ -97,15 +91,38 @@
         + srow('하차', sbtn('하차중', false), sbtn('하차완료', false))
         + '<div style="height:1px;background:#E9E9E9;margin-top:4px;"></div>'
       + '</div>';
-    document.body.appendChild(d);
-    requestAnimationFrame(function () { d.style.transform = 'translateX(0)'; });
-    document.getElementById('ev-drawer-x').addEventListener('click', function () { d.remove(); showEV(); });
+  }
+  function closeDrawer(d, isA) {
+    if (!d) return;
+    if (isA) { d.style.transform = 'translateX(100%)'; setTimeout(function () { if (d.parentNode) d.remove(); }, 240); }
+    else { d.style.width = '0'; d.style.minWidth = '0'; setTimeout(function () { if (d.parentNode) d.remove(); }, 280); }
+  }
+  function openDrawer() {
+    var isA = location.pathname.indexOf('remote-control-A') >= 0;
+    var d = document.createElement('div'); d.id = 'ev-drawer';
+    if (isA) {
+      // A: 우측 패널을 덮는 오버레이 드로워
+      d.style.cssText = 'position:fixed;top:0;right:0;bottom:0;z-index:' + (Z + 2) + ';width:330px;max-width:92vw;background:#fff;'
+        + 'box-shadow:-4px 0 24px rgba(0,0,0,.18);display:flex;flex-direction:column;font-family:Pretendard,system-ui,sans-serif;'
+        + 'transform:translateX(100%);transition:transform .22s ease;';
+      d.innerHTML = drawerContent();
+      document.body.appendChild(d);
+      requestAnimationFrame(function () { d.style.transform = 'translateX(0)'; });
+    } else {
+      // B(B1/B2): 레이아웃을 밀면서 나오는 플렉스 드로워 (로봇설정 드로워와 동일 메커니즘)
+      var sd = document.getElementById('settings-drawer');
+      var parent = sd ? sd.parentNode : document.body;
+      d.style.cssText = 'width:0;min-width:0;overflow:hidden;background:#fff;display:flex;flex-direction:column;flex-shrink:0;align-self:stretch;'
+        + 'box-shadow:-2px 0 4px rgba(0,0,0,.12);transition:width .25s ease,min-width .25s ease;font-family:Pretendard,system-ui,sans-serif;';
+      d.innerHTML = '<div style="width:330px;max-width:92vw;height:100%;display:flex;flex-direction:column;overflow-y:auto;">' + drawerContent() + '</div>';
+      parent.appendChild(d);
+      requestAnimationFrame(function () { d.style.width = '330px'; d.style.minWidth = '330px'; });
+    }
+    document.getElementById('ev-drawer-x').addEventListener('click', function () { closeDrawer(d, isA); showEV(); });
     var call = document.getElementById('ev-call-btn');
-    tooltip('호출 버튼을 눌러주세요', call.getBoundingClientRect(), 'call-tip');
-    call.addEventListener('click', function () {
-      removeEl('call-tip');
-      onCall();   // 드로워는 유지(닫지 않음)
-    }, { once: true });
+    if (call) call.addEventListener('click', function () { removeEl('call-tip'); onCall(); /* 드로워 유지 */ }, { once: true });
+    // 드로워 슬라이드 완료 후 위치 정확히 잡아 툴팁 표시
+    setTimeout(function () { var c = document.getElementById('ev-call-btn'); if (c) tooltip('호출 버튼을 눌러주세요', c.getBoundingClientRect(), 'call-tip'); }, 300);
   }
 
   // ── 6. 호출 → 영상 재생 + 재개 → 3초 후 볼륨 가이드 ──────────
@@ -130,7 +147,11 @@
     function done() {
       try { if (window.NeubieAB) NeubieAB.markResponse({ success: true }); } catch (e) {}
       g.remove();
-      setTimeout(function () { if (window.NeubieFlow) NeubieFlow.complete({ success: true }); }, 400);
+      // 가이드 동작 종료 → 남은 툴팁/드로워 정리
+      removeEl('ev-tip'); removeEl('call-tip');
+      var dr = document.getElementById('ev-drawer'); if (dr) dr.remove();
+      // 완료는 2초 뒤
+      setTimeout(function () { if (window.NeubieFlow) NeubieFlow.complete({ success: true }); }, 2000);
     }
     trackRealVolume(done);
   }

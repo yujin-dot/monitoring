@@ -20,7 +20,8 @@
   function done(r) {
     r = r || {};
     try { if (window.NeubieAB) NeubieAB.markResponse(r); } catch (e) {}
-    try { if (window.NeubieFlow) NeubieFlow.complete(r); } catch (e) {}
+    // 시나리오 완료(응답) 후 2초 뒤에 '시나리오 완료'로 넘어감
+    setTimeout(function () { try { if (window.NeubieFlow) NeubieFlow.complete(r); } catch (e) {} }, 2000);
   }
   function q() { for (var i = 0; i < arguments.length; i++) { var e = document.querySelector(arguments[i]); if (e) return e; } return null; }
   function once(el, cb) { if (!el) return false; var f = false; el.addEventListener('click', function () { if (f) return; f = true; cb(); }); return true; }
@@ -81,9 +82,30 @@
       } else { startS1(); }
 
     } else if (sc === 2) {
-      // T1: 신호 영상 녹색(≈4s)
-      var sig = document.getElementById('xwalk-video');
-      if (sig) { var h = function () { if (sig.currentTime >= 4) { markStim(); sig.removeEventListener('timeupdate', h); } }; sig.addEventListener('timeupdate', h); }
+      // [횡단하기] 영역은 '시나리오 시작 후 2초 뒤'에 노출 (A/B 동일)
+      function hideX() {
+        try { if (window.setCrosswalk) window.setCrosswalk(false); } catch (e) {}
+        try { if (window.setCrosswalkOverlay) window.setCrosswalkOverlay(false); } catch (e) {}
+      }
+      function showX() {
+        try { if (window.setCrosswalk) window.setCrosswalk(true); } catch (e) {}
+        try { if (window.setCrosswalkOverlay) window.setCrosswalkOverlay(true); } catch (e) {}
+      }
+      function startS2() {
+        hideX(); requestAnimationFrame(hideX); setTimeout(hideX, 100); // setup이 켜둔 횡단보도 숨김(보정 포함)
+        setTimeout(function () {
+          showX();
+          // T1: 신호 영상 녹색(≈4s) — 노출 후 바인딩
+          var sig = document.getElementById('xwalk-video');
+          if (sig) { var h = function () { if (sig.currentTime >= 4) { markStim(); sig.removeEventListener('timeupdate', h); } }; sig.addEventListener('timeupdate', h); }
+        }, 2000);
+      }
+      hideX();
+      var ovl2 = document.getElementById('neubie-flow-ovl');
+      if (ovl2 && window.MutationObserver) {
+        var mo2 = new MutationObserver(function () { if (!document.getElementById('neubie-flow-ovl')) { mo2.disconnect(); startS2(); } });
+        mo2.observe(document.body, { childList: true, subtree: true });
+      } else { startS2(); }
       once(q('#xwalk-btn', '#xwalkBtn'), function () { done({}); });
 
     } else if (sc === 3) {
