@@ -67,7 +67,7 @@ function doPost(e) {
   }
 }
 
-// 배포 확인용 (브라우저로 /exec 열면 표시)
+// 배포 확인용 (브라우저로 /exec 열면 표시). 버전 문자열로 신버전 배포 여부 확인.
 function doGet() {
-  return ContentService.createTextOutput('neubie-ab sink ok');
+  return ContentService.createTextOutput('neubie-ab sink ok · v2 (participants/trials/sus, affiliation)');
 }
