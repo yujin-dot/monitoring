@@ -701,6 +701,7 @@
     var a = null; try { a = window.NeubieAB && NeubieAB.getAssignment && NeubieAB.getAssignment(); } catch (e) {}
     if (scNum === 1 && sc && sc.subTests) {
       var sub = (a && a.s1Sub && a.s1Sub.control_A) || 1;   // 배정 없으면 sub1
+      var subQ = parseInt(new URLSearchParams(location.search).get('sub'), 10); if (subQ) sub = subQ; // 보기용 ?sub=
       var sd = sc.subTests[sub] || sc.subTests[1];
       if (sd && sd.state) Object.assign(s, sd.state);
     } else if (scNum === 3) {

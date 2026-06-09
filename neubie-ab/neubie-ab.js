@@ -56,7 +56,8 @@
     trial: null,        // 현재 트라이얼 상태
     _videoBound: null,  // 중복 bindVideo 방지
     mouse: null,        // 현재 트라이얼의 마우스 체류/클릭 트래커
-    nickname: null      // seed 결정론적 닉네임 (참가자 식별 표시용)
+    nickname: null,     // seed 결정론적 닉네임 (참가자 식별 표시용)
+    preview: false      // 보기 전용 모드(?preview=1): 어떤 기록도 전송하지 않음
   };
 
   // ── init ─────────────────────────────────────────────────────
@@ -103,6 +104,15 @@
       }
     }
 
+    // 보기 전용 모드: ?preview=1 또는 opts.preview → PostHog/Sheets/identify 전부 no-op(테스트 데이터 미포함)
+    S.preview = !!opts.preview || (typeof location !== 'undefined' && /[?&]preview=1\b/.test(location.search));
+    if (S.preview) {
+      try { window.__neubiePreview = true; } catch (e) {}
+      console.info('[NeubieAB] preview 모드 — 어떤 데이터도 기록하지 않습니다(보기 전용).');
+      // 보기 편하도록 카메라 영상 루프
+      try { var _cv = document.getElementById('cam-video'); if (_cv) _cv.loop = true; } catch (e) {}
+    }
+
     // posthog: HTML의 공식 스니펫이 self-init. 모듈은 이를 사용 + 테스트 표식/세션리코딩만.
     S.ph = opts.posthog || getDep('posthog-js', 'posthog');
     var phCfg = S.config.posthog || {};
@@ -143,6 +153,7 @@
   }
 
   function identify(profile) {
+    if (S.preview) { console.log('[NeubieAB][preview] identify 생략'); return; }
     profile = profile || {};
     if (!S.participantId) {
       console.warn('[NeubieAB] identify: participant_id 없음(seed 미설정). identify 생략.');
@@ -241,6 +252,8 @@
     if (scenario === 3) {
       var t = S.trial;
       var v = (t && t.ctx && t.ctx.stimulus_video) || (S.assignment && S.assignment.s3Video[S.variant]);
+      // 배정 없을 때(보기 전용 등) ?video=taxi|bump 로 자극 영상 직접 선택
+      if (!v && typeof location !== 'undefined') { var pv = new URLSearchParams(location.search).get('video'); if (pv) v = pv; }
       src = (v && S.config.videos[v]) ? S.config.videos[v].src : null;
     } else {
       var sc = S.config.scenarios[scenario];
@@ -248,6 +261,7 @@
     }
     if (!src) { console.warn('[NeubieAB] loadScenarioVideo: scenario ' + scenario + ' 영상 src 없음'); return null; }
     videoEl.src = src;
+    if (S.preview) videoEl.loop = true;   // 보기 전용 — 영상 반복
     return src;
   }
 
@@ -511,6 +525,7 @@
 
   // Google Sheets(Apps Script 웹앱)로 행 전송. endpoint 미설정(TODO)이면 no-op.
   function sheetSend(type, props) {
+    if (S.preview) return;   // 보기 전용 — 시트 기록 안 함
     var sh = S.config && S.config.sheets;
     if (!sh || !sh.enabled || !sh.endpoint || /TODO/.test(sh.endpoint)) return;
     var marker = (S.config.posthog && S.config.posthog.testMarker) || {};
@@ -535,6 +550,7 @@
   }
 
   function _capture(eventName, props) {
+    if (S.preview) { console.log('[NeubieAB][preview] capture 생략:', eventName); return; }
     var marker = (S.config && S.config.posthog && S.config.posthog.testMarker) || {};
     var payload = Object.assign({}, marker, props); // 모든 이벤트에 테스트 표식 명시
     var p = _ph();
@@ -558,6 +574,7 @@
     _deriveGroup: deriveGroup,     // 테스트용
     _deriveOutcome: deriveOutcome, // 테스트용
     getContext: sessionContext,
-    getAssignment: function () { return S.assignment; }
+    getAssignment: function () { return S.assignment; },
+    isPreview: function () { return !!S.preview; }
   };
 });

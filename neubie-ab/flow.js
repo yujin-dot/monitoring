@@ -132,6 +132,8 @@
 
   // 완료 오버레이 → [다음]. result.success가 있으면 성공/실패 표시.
   function complete(result) {
+    // 보기 전용(?preview=1): 완료 오버레이/진행 없이 화면 유지(영상 반복 관찰)
+    if (typeof location !== 'undefined' && /[?&]preview=1\b/.test(location.search)) return;
     var fin = document.getElementById('neubie-flow-fin'); if (fin) fin.remove();
     var pid = param('pid'), seq = buildSequence(pid), i = currentIndex(pid, seq);
     var last = ((i < 0 ? 0 : i) + 1) >= seq.length;

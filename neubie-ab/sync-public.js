@@ -26,8 +26,9 @@ fs.mkdirSync(path.join(PUB, 'neubie-ab'), { recursive: true });
   cp(path.join(DIR, f), path.join(PUB, 'neubie-ab', f));
 });
 
-// 1b) 통합 진입 페이지
+// 1b) 통합 진입 페이지 + 보기 전용 랜딩
 cp(path.join(DIR, 'entry.html'), path.join(PUB, 'entry.html'));
+cp(path.join(DIR, 'viewer.html'), path.join(PUB, 'viewer.html'));
 
 // 2) A 페이지
 var aSrc = path.join(ROOT, 'remote-control-A.html');

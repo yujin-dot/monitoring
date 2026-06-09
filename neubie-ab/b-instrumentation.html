@@ -151,7 +151,8 @@
       if (typeof loadScenarioTest === 'function' && typeof SCENARIO_TESTS !== 'undefined') {
         var testNum = 1;                                  // 기본 test1
         if (sc === 1 && ctx.sub_test) testNum = ctx.sub_test;                       // 1=wifi500, 2=battery17
-        else if (sc === 3 && ctx.stimulus_video) testNum = ctx.stimulus_video === 'bump' ? 2 : 1; // taxi=1, bump=2
+        else if (sc === 3) { var _v3 = ctx.stimulus_video || qs.get('video'); testNum = _v3 === 'bump' ? 2 : 1; } // taxi=1, bump=2 (보기용 ?video= 지원)
+        else if (sc === 1) { var _s1 = qs.get('sub'); if (_s1) testNum = parseInt(_s1, 10) || 1; }              // 보기용 ?sub= 지원
         var idx = SCENARIO_TESTS.findIndex(function (t) { return t.sc === sc && t.test === testNum; });
         if (idx >= 0) {
           loadScenarioTest(idx);                          // ← 횡단보도 등 시나리오 UI 표시

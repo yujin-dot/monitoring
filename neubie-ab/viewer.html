@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>시나리오 보기 (테스트 미포함)</title>
+<style>
+  :root { --bg:#0E0F11; --card:#17191C; --line:#2A2D31; --txt:#E9E9E9; --sub:#9DA3AA; --a:#00BA7C; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font-family:Pretendard,system-ui,-apple-system,sans-serif; padding:32px 20px 64px; }
+  .wrap { max-width:980px; margin:0 auto; }
+  h1 { font-size:24px; margin:0 0 6px; }
+  .badge { display:inline-block; background:rgba(0,186,124,.15); color:var(--a); font-weight:700; font-size:12px; padding:4px 10px; border-radius:999px; margin-left:8px; vertical-align:middle; }
+  p.sub { color:var(--sub); font-size:14px; line-height:1.6; margin:6px 0 24px; }
+  table { width:100%; border-collapse:separate; border-spacing:0 10px; }
+  th { text-align:left; color:var(--sub); font-size:12px; font-weight:600; padding:0 12px 4px; }
+  td { background:var(--card); border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:14px 12px; vertical-align:middle; }
+  td:first-child { border-left:1px solid var(--line); border-radius:10px 0 0 10px; }
+  td:last-child { border-right:1px solid var(--line); border-radius:0 10px 10px 0; }
+  .sc-name { font-weight:700; font-size:15px; }
+  .sc-desc { color:var(--sub); font-size:12px; margin-top:3px; line-height:1.5; }
+  .links { display:flex; gap:8px; flex-wrap:wrap; }
+  a.btn { display:inline-flex; align-items:center; gap:6px; text-decoration:none; color:var(--txt);
+    background:#202327; border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-size:13px; font-weight:600; transition:.12s; }
+  a.btn:hover { background:#2A2E33; border-color:#3A3F45; }
+  a.btn .v { color:var(--a); }
+  .note { margin-top:28px; color:var(--sub); font-size:13px; line-height:1.7; border-top:1px solid var(--line); padding-top:18px; }
+  code { background:#202327; padding:1px 6px; border-radius:5px; color:#CFE; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>시나리오 보기 <span class="badge">● 테스트 미포함 · 기록 안 됨</span></h1>
+  <p class="sub">
+    각 시나리오의 A·B 화면과 영상을 자유롭게 확인하는 <b>보기 전용</b> 링크입니다.
+    <code>?preview=1</code> 모드라 PostHog·구글시트에 <b>어떤 데이터도 기록되지 않고</b>, 영상은 <b>반복 재생</b>되며 완료 화면으로 넘어가지 않습니다.
+    (각 링크는 새 탭에서 열립니다.)
+  </p>
+
+  <table>
+    <thead>
+      <tr><th style="width:38%">시나리오</th><th>A 시안</th><th>B1 (세로)</th><th>B2 (가로)</th></tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <div class="note">
+    • A = 별도 화면, B1 = 세로(layout-b), B2 = 가로 레이아웃. 같은 시나리오라도 시안마다 구성이 다릅니다.<br/>
+    • 시나리오 1은 비정상 항목별(<code>sub</code>), 시나리오 3은 자극별(<code>taxi</code>/<code>bump</code>)로 나눠 볼 수 있습니다.<br/>
+    • 보기 모드에서도 버튼(횡단하기·사이드브레이크·도착처리·음량 등)은 동작하지만 결과는 저장되지 않습니다.<br/>
+    • 실제 테스트는 <code>/entry.html</code>(통합 진입 링크)로 진행하세요 — 그쪽은 정상적으로 기록됩니다.
+  </div>
+</div>
+
+<script>
+  // 시나리오 정의 (variant는 행마다 동일 쿼리에 layout만 다름)
+  var SCENARIOS = [
+    { sc:1, name:'시나리오 1 · 수치 측정', desc:'로봇 정보 3초 확인 → 에러 항목 선택', variants:[
+        { label:'와이파이', extra:'&sub=1' }, { label:'배터리', extra:'&sub=2' } ] },
+    { sc:2, name:'시나리오 2 · 신호 대기/진입', desc:'신호 점등 후 [횡단하기]', variants:[ { label:'', extra:'' } ] },
+    { sc:3, name:'시나리오 3 · 고위험 돌발', desc:'돌출 출현 시 [사이드브레이크 ON]', variants:[
+        { label:'돌출차량', extra:'&video=taxi' }, { label:'단차', extra:'&video=bump' } ] },
+    { sc:5, name:'시나리오 5 · 정밀 제어', desc:'엘리베이터 호출 → 음량 0.2 가이드', variants:[ { label:'', extra:'' } ] },
+    { sc:6, name:'시나리오 6 · 수동 도착 처리', desc:'도착 알림 → [도착 처리] → 확인', variants:[ { label:'', extra:'' } ] }
+  ];
+
+  function url(variant, sc, extra) {
+    var base, p;
+    if (variant === 'A') { base = 'remote-control-A.html'; p = '?scenario=' + sc; }
+    else if (variant === 'B1') { base = 'index.html'; p = '?layout=vertical&scenario=' + sc; }
+    else { base = 'index.html'; p = '?layout=horizontal&scenario=' + sc; }
+    return base + p + '&preview=1' + (extra || '');
+  }
+  function cell(variant, item) {
+    return '<td><div class="links">' + item.variants.map(function (v) {
+      var lbl = v.label ? '<span class="v">' + v.label + '</span>' : '▶ 보기';
+      return '<a class="btn" target="_blank" rel="noopener" href="' + url(variant, item.sc, v.extra) + '">' + lbl + '</a>';
+    }).join('') + '</div></td>';
+  }
+
+  document.getElementById('rows').innerHTML = SCENARIOS.map(function (item) {
+    return '<tr>'
+      + '<td><div class="sc-name">' + item.name + '</div><div class="sc-desc">' + item.desc + '</div></td>'
+      + cell('A', item) + cell('B1', item) + cell('B2', item)
+      + '</tr>';
+  }).join('');
+</script>
+</body>
+</html>
