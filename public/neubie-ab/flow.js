@@ -211,9 +211,19 @@
     showScenarioIntro();
   }
 
+  // 보기 전용: ?sus=<variant> 가 있으면 SUS 설문을 바로 띄움(콘솔 없이 viewer에서 미리보기). preview에서만.
+  function previewSus(variant) { showSus(variant, function () { removeOverlay(); }); }
+  function maybePreviewSus() {
+    var v = param('sus'); if (!v) return false;
+    var pv = (window.NeubieAB && NeubieAB.isPreview && NeubieAB.isPreview()) || /[?&]preview=1\b/.test(location.search);
+    if (!pv) return false;            // 실제 테스트 페이지에선 무시(오기록 방지)
+    previewSus(v); return true;
+  }
+  function boot() { if (maybePreviewSus()) return; mount(); }
+
   if (typeof document !== 'undefined') {
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
-    else setTimeout(mount, 0);
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+    else setTimeout(boot, 0);
   }
 
   return {
@@ -223,6 +233,8 @@
     complete: complete,          // 응답 버튼에서 markResponse 후 호출 권장
     active: active,
     mount: mount,
+    previewSus: previewSus,      // 미리보기용
+
     current: function (pid) { var s = buildSequence(pid); var i = currentIndex(pid, s); return { index: i, n: i + 1, total: s.length, trial: s[i] || null }; },
     clear: clear,
     _load: load

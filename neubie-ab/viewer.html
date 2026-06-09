@@ -44,6 +44,16 @@
     <tbody id="rows"></tbody>
   </table>
 
+  <div style="margin-top:26px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;">
+    <div style="font-weight:700;font-size:15px;margin-bottom:4px;">사용성 설문(SUS) 미리보기</div>
+    <div style="color:var(--sub);font-size:13px;margin-bottom:12px;">실제 테스트에선 각 시안의 전체 시나리오가 끝나면 자동으로 뜹니다. 아래는 설문 화면만 미리 보기(기록 안 됨).</div>
+    <div class="links">
+      <a class="btn" target="_blank" rel="noopener" href="remote-control-A.html?preview=1&sus=control_A">📝 <span class="v">A</span> 설문</a>
+      <a class="btn" target="_blank" rel="noopener" href="index.html?layout=vertical&preview=1&sus=B1">📝 <span class="v">B1(세로)</span> 설문</a>
+      <a class="btn" target="_blank" rel="noopener" href="index.html?layout=horizontal&preview=1&sus=B2">📝 <span class="v">B2(가로)</span> 설문</a>
+    </div>
+  </div>
+
   <div class="note">
     • A = 별도 화면, B1 = 세로(layout-b), B2 = 가로 레이아웃. 같은 시나리오라도 시안마다 구성이 다릅니다.<br/>
     • 시나리오 1은 비정상 항목별(<code>sub</code>), 시나리오 3은 자극별(<code>taxi</code>/<code>bump</code>)로 나눠 볼 수 있습니다.<br/>
