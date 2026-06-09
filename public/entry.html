@@ -53,7 +53,9 @@
     if (qs.get('done') === '1') {
       NeubieFlow.clear();
       card.innerHTML = '<div class="done"><div class="big">✅</div><h1>수고하셨습니다!</h1>'
-        + '<p class="sub">테스트가 모두 끝났습니다. 창을 닫으셔도 됩니다.</p></div>';
+        + '<p class="sub">테스트가 모두 끝났습니다. 아래 버튼을 눌러 마지막 설문을 진행해주세요.</p>'
+        + '<a class="start" href="https://forms.gle/D7978gncpVhUJ9M48" style="display:flex;align-items:center;justify-content:center;text-decoration:none;margin-top:24px;">다음으로 이동하기 →</a>'
+        + '</div>';
       try { if (window.posthog) posthog.capture('session_complete', (NeubieConfig.posthog||{}).testMarker || {}); } catch(e){}
       return;
     }
