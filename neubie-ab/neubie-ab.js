@@ -370,6 +370,7 @@
     ev.error   = result.error   != null ? !!result.error   : !!out.error;
     if (result.correct != null) ev.correct = !!result.correct;        // S1 정/오판
     else if (out.correct != null) ev.correct = !!out.correct;
+    if (result.selected != null) ev.selected = result.selected;       // S1 선택 항목(기록용)
 
     // 첫 노출만 분석하는 필드 정리 (S6 overshoot/error 등)
     if (sc.firstExposureOnly && !t.ctx.is_first_exposure) {

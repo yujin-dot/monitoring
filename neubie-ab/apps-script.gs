@@ -20,7 +20,7 @@ var HEADERS = {
   trials: ['type','ts','test_suite','is_test','environment','participant_id','track','ui_variant','scenario','scenario_name',
     'stimulus_video','sub_test','block_position','is_first_exposure','perception_ms','response_ms','total_ms',
     'braking_latency_ms','anomaly_ms','movement_time_ms','fitts_id','overshoot_count','mouse_path_px',
-    'success','timeout','error','correct']
+    'success','timeout','error','correct','selected']
 };
 
 function tabFor(type) { return type === 'participant' ? 'participants' : 'trials'; }

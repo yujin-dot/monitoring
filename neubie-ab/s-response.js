@@ -26,23 +26,59 @@
   function once(el, cb) { if (!el) return false; var f = false; el.addEventListener('click', function () { if (f) return; f = true; cb(); }); return true; }
   function markStim() { try { if (window.NeubieAB) NeubieAB.markStimulus(); } catch (e) {} }
 
+  // S1: 현재 서브테스트의 비정상 항목 집합 (config 상태 vs 기본값 비교)
+  function s1Abnormal() {
+    var out = [];
+    try {
+      var C = window.NeubieConfig, d = C.robotStateDefault;
+      var asg = window.NeubieAB && NeubieAB.getAssignment && NeubieAB.getAssignment();
+      var variant = (window.NeubieAB && NeubieAB.getContext) ? NeubieAB.getContext().ui_variant : null;
+      var subNo = (asg && variant && asg.s1Sub) ? asg.s1Sub[variant] : 1;
+      var st = (C.scenarios[1].subTests[subNo] && C.scenarios[1].subTests[subNo].state) || {};
+      if (st.wifi_ms != null && st.wifi_ms !== d.wifi_ms) out.push('와이파이');
+      if (st.gps != null && st.gps !== d.gps) out.push('GPS');
+      if (st.battery_pct != null && st.battery_pct !== d.battery_pct) out.push('배터리');
+      if (st.cargo === '열림') out.push('적재함 열림');
+    } catch (e) {}
+    return out;
+  }
+  // S1: 10초 카운트다운 후 콜백
+  function runCountdown(sec, cb) {
+    var t = document.createElement('div'); t.id = 's1-countdown';
+    t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:90000;background:#00684A;color:#fff;'
+      + 'font:700 15px Pretendard,system-ui,sans-serif;padding:12px 18px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.3);';
+    var n = sec; t.textContent = '로봇 정보를 확인하세요 · ' + n + '초';
+    document.body.appendChild(t);
+    var iv = setInterval(function () { n--; if (n > 0) { t.textContent = '로봇 정보를 확인하세요 · ' + n + '초'; } else { clearInterval(iv); t.remove(); cb(); } }, 1000);
+  }
+  // S1: 에러 케이스 선택 UI (정답 여부 미안내)
+  function showS1Select() {
+    var opts = ['와이파이', 'GPS', '배터리', '적재함 열림'];
+    var panel = document.createElement('div'); panel.id = 's1-select';
+    panel.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90001;background:#fff;border-radius:14px;'
+      + 'box-shadow:0 6px 24px rgba(0,0,0,.25);padding:18px 22px;width:380px;max-width:92vw;font-family:Pretendard,system-ui,sans-serif;';
+    var html = '<div style="font-size:15px;font-weight:700;color:#1A1A1A;margin-bottom:12px;">어떤 항목에 문제가 있었나요? (해당 항목 모두 선택)</div>';
+    opts.forEach(function (o) { html += '<label style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:14px;color:#434343;cursor:pointer;"><input type="checkbox" value="' + o + '" style="width:18px;height:18px;accent-color:#00BA7C;">' + o + '</label>'; });
+    html += '<button id="s1-submit" style="width:100%;height:48px;margin-top:12px;border:none;border-radius:10px;background:#00BA7C;color:#fff;font:700 15px Pretendard,system-ui,sans-serif;cursor:pointer;">제출</button>';
+    panel.innerHTML = html; document.body.appendChild(panel);
+    document.getElementById('s1-submit').addEventListener('click', function () {
+      var sel = []; panel.querySelectorAll('input:checked').forEach(function (c) { sel.push(c.value); });
+      var ab = s1Abnormal();
+      var correct = ab.length > 0 && ab.length === sel.length && ab.every(function (x) { return sel.indexOf(x) >= 0; });
+      panel.remove();
+      done({ correct: correct, selected: sel.join('|') });   // 정답 여부는 화면에 안내하지 않음
+    }, { once: true });
+  }
+
   function init() {
     if (sc === 1) {
-      // T1: 비정상 카드 인지 시점 = 흐름 인트로(시작하기)가 닫힌 직후
+      // 시작(인트로 닫힘) → T1 + 10초 카운트다운 → 에러 케이스 선택
+      function startS1() { markStim(); runCountdown(10, showS1Select); }
       var ovl = document.getElementById('neubie-flow-ovl');
       if (ovl && window.MutationObserver) {
-        var mo = new MutationObserver(function () { if (!document.getElementById('neubie-flow-ovl')) { mo.disconnect(); markStim(); } });
+        var mo = new MutationObserver(function () { if (!document.getElementById('neubie-flow-ovl')) { mo.disconnect(); startS1(); } });
         mo.observe(document.body, { childList: true, subtree: true });
-      } else { markStim(); }
-      // [주행 불가능] 버튼 (없으면 주입)
-      var b = q('#drive-impossible-btn');
-      if (!b) {
-        b = document.createElement('button'); b.id = 'drive-impossible-btn'; b.textContent = '주행 불가능';
-        b.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90000;border:none;border-radius:10px;'
-          + 'background:#FA5952;color:#fff;font:700 16px Pretendard,system-ui,sans-serif;padding:14px 32px;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,.3);';
-        document.body.appendChild(b);
-      }
-      once(b, function () { b.disabled = true; b.style.opacity = '.55'; done({ correct: true }); });
+      } else { startS1(); }
 
     } else if (sc === 2) {
       // T1: 신호 영상 녹색(≈4s)
