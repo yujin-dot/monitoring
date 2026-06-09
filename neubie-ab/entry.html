@@ -82,6 +82,7 @@
         '</div><input type="hidden" name="'+name+'" />';
     }
     var YN = [{v:'Y',l:'있음'},{v:'N',l:'없음'}];
+    var AFFIL = [{v:'general',l:'일반인'},{v:'neubility',l:'뉴빌리티 임직원'}];
 
     card.innerHTML =
       '<h1>원격제어 A/B 사용성 테스트</h1>'
@@ -95,15 +96,18 @@
       + '<div class="field"><label>운전면허</label>'+seg('license',YN)+'</div>'
       + '<div class="field"><label>운전 경험 1년 이상</label>'+seg('driving_1yr',YN)+'</div>'
       + '<div class="field"><label>관제 실무 경험</label>'+seg('ops_experience',YN)+'</div>'
+      // 관제 실무 경험 [있음] → 기간 + 도심 배달 경험
       + '<div class="field hidden" id="opsMonthsField"><label>관제 실무 기간</label><select name="ops_months">'
         + '<option value="" disabled selected>선택</option>'
         + '<option value="3mo">3개월 이내</option><option value="3-6mo">3~6개월</option><option value="6mo-1yr">6개월~1년</option><option value="1yr+">1년 이상</option>'
         + '</select></div>'
-      + '<div class="field hidden" id="jobRoleField"><label>직무 <span class="hint">관제 실무 경험 없을 때</span></label><select name="job_role">'
+      + '<div class="field hidden" id="urbanField"><label>도심 배달 경험</label>'+seg('urban_delivery_exp',YN)+'</div>'
+      // 관제 실무 경험 [없음] → 소속(일반인/뉴빌리티 임직원), 임직원이면 직무
+      + '<div class="field hidden" id="affiliationField"><label>소속</label>'+seg('affiliation',AFFIL)+'</div>'
+      + '<div class="field hidden" id="jobRoleField"><label>직무 <span class="hint">뉴빌리티 임직원</span></label><select name="job_role">'
         + '<option value="" disabled selected>선택</option>'
         + '<option value="FLAT">FLAT</option><option value="AUT">AUT</option><option value="OP">OP</option><option value="PROD">PROD</option><option value="BRT">BRT</option><option value="ETC">기타</option>'
         + '</select></div>'
-      + '<div class="field"><label>도심 배달 경험</label>'+seg('urban_delivery_exp',YN)+'</div>'
       + '<div class="err" id="err"></div>'
       + '<button type="submit" class="start">테스트 시작 →</button>'
       + '</form>';
@@ -117,13 +121,18 @@
         b.addEventListener('click', function(){
           seg.querySelectorAll('button').forEach(function(x){x.classList.remove('on');});
           b.classList.add('on'); hidden.value = b.getAttribute('data-val');
-          if (seg.getAttribute('data-seg')==='ops_experience') toggleOps(hidden.value);
+          var nm = seg.getAttribute('data-seg');
+          if (nm==='ops_experience' || nm==='affiliation') refreshConditional();
         });
       });
     });
-    function toggleOps(v){
-      document.getElementById('opsMonthsField').classList.toggle('hidden', v!=='Y');
-      document.getElementById('jobRoleField').classList.toggle('hidden', v!=='N');
+    function refreshConditional(){
+      var ops = f.querySelector('input[name="ops_experience"]').value;
+      var aff = f.querySelector('input[name="affiliation"]').value;
+      document.getElementById('opsMonthsField').classList.toggle('hidden', ops!=='Y');   // 있음 → 관제 기간
+      document.getElementById('urbanField').classList.toggle('hidden', ops!=='Y');        // 있음 → 도심 배달 경험
+      document.getElementById('affiliationField').classList.toggle('hidden', ops!=='N');  // 없음 → 소속
+      document.getElementById('jobRoleField').classList.toggle('hidden', !(ops==='N' && aff==='neubility')); // 없음+임직원 → 직무
     }
 
     // 수집정보 제출 후: 실험 방법 설명 → [시작] → 흐름 시작
@@ -139,21 +148,32 @@
       e.preventDefault();
       var err = document.getElementById('err'); err.textContent='';
       var fd = new FormData(f);
+      var ops = fd.get('ops_experience');
+      var aff = fd.get('affiliation');
       var profile = {
         nickname: nickname,
         age_band: fd.get('age_band'),
         license: fd.get('license'),
         driving_1yr: fd.get('driving_1yr'),
-        ops_experience: fd.get('ops_experience'),
-        ops_months: fd.get('ops_months') || null,
-        urban_delivery_exp: fd.get('urban_delivery_exp'),
-        job_role: fd.get('job_role') || null
+        ops_experience: ops,
+        // 있음 → 관제 기간 + 도심 배달 경험
+        ops_months: ops==='Y' ? (fd.get('ops_months') || null) : null,
+        urban_delivery_exp: ops==='Y' ? (fd.get('urban_delivery_exp') || null) : null,
+        // 없음 → 소속(+임직원이면 직무)
+        affiliation: ops==='N' ? (aff || null) : null,
+        job_role: (ops==='N' && aff==='neubility') ? (fd.get('job_role') || null) : null
       };
       // 검증
-      var need = ['age_band','license','driving_1yr','ops_experience','urban_delivery_exp'];
+      var need = ['age_band','license','driving_1yr','ops_experience'];
       for (var i=0;i<need.length;i++){ if(!profile[need[i]]){ err.textContent='모든 항목을 입력해주세요.'; return; } }
-      if (profile.ops_experience==='Y' && !profile.ops_months){ err.textContent='관제 실무 기간을 선택해주세요.'; return; }
-      if (profile.ops_experience==='N' && !profile.job_role){ err.textContent='직무를 선택해주세요.'; return; }
+      if (ops==='Y'){
+        if (!profile.ops_months){ err.textContent='관제 실무 기간을 선택해주세요.'; return; }
+        if (!profile.urban_delivery_exp){ err.textContent='도심 배달 경험을 선택해주세요.'; return; }
+      }
+      if (ops==='N'){
+        if (!profile.affiliation){ err.textContent='소속을 선택해주세요.'; return; }
+        if (profile.affiliation==='neubility' && !profile.job_role){ err.textContent='직무를 선택해주세요.'; return; }
+      }
 
       // 식별 + 흐름 시작
       try {
