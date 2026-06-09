@@ -17,7 +17,7 @@
   form{margin-top:22px;display:flex;flex-direction:column;gap:18px;}
   .field label{display:block;font-size:14px;font-weight:600;margin-bottom:8px;}
   .field .hint{font-weight:400;color:var(--mono-500);font-size:12px;margin-left:6px;}
-  select,input[type=number]{width:100%;height:44px;border:1px solid var(--mono-300);border-radius:8px;padding:0 12px;font-size:15px;font-family:inherit;background:#fff;color:var(--mono-900);outline:none;}
+  select,input[type=number],input[type=text]{width:100%;height:44px;border:1px solid var(--mono-300);border-radius:8px;padding:0 12px;font-size:15px;font-family:inherit;background:#fff;color:var(--mono-900);outline:none;box-sizing:border-box;}
   select:focus,input:focus{border-color:var(--primary);}
   .seg{display:flex;gap:8px;}
   .seg button{flex:1;height:44px;border:1px solid var(--mono-300);border-radius:8px;background:#fff;color:var(--mono-700);font:600 15px inherit;cursor:pointer;}
@@ -104,10 +104,13 @@
       + '<div class="field hidden" id="urbanField"><label>도심 배달 경험</label>'+seg('urban_delivery_exp',YN)+'</div>'
       // 관제 실무 경험 [없음] → 소속(일반인/뉴빌리티 임직원), 임직원이면 직무
       + '<div class="field hidden" id="affiliationField"><label>소속</label>'+seg('affiliation',AFFIL)+'</div>'
-      + '<div class="field hidden" id="jobRoleField"><label>직무 <span class="hint">뉴빌리티 임직원</span></label><select name="job_role">'
-        + '<option value="" disabled selected>선택</option>'
-        + '<option value="FLAT">FLAT</option><option value="AUT">AUT</option><option value="OP">OP</option><option value="PROD">PROD</option><option value="RBT">RBT</option><option value="ETC">기타</option>'
-        + '</select></div>'
+      + '<div class="field hidden" id="jobRoleField"><label>직무 <span class="hint">뉴빌리티 임직원</span></label>'
+        + '<select name="job_role" id="jobRoleSelect">'
+          + '<option value="" disabled selected>선택</option>'
+          + '<option value="FLAT">FLAT</option><option value="AUT">AUT</option><option value="Operation">Operation</option><option value="PROD">PROD</option><option value="RBT">RBT</option><option value="Brand">Brand</option><option value="ETC">기타</option>'
+        + '</select>'
+        + '<input type="text" id="jobRoleOther" name="job_role_other" class="hidden" placeholder="직무를 직접 입력해주세요" style="margin-top:8px;" />'
+        + '</div>'
       + '<div class="err" id="err"></div>'
       + '<button type="submit" class="start">테스트 시작 →</button>'
       + '</form>';
@@ -134,6 +137,13 @@
       document.getElementById('affiliationField').classList.toggle('hidden', ops!=='N');  // 없음 → 소속
       document.getElementById('jobRoleField').classList.toggle('hidden', !(ops==='N' && aff==='neubility')); // 없음+임직원 → 직무
     }
+    // 직무 '기타' 선택 시 직접 입력 필드 노출
+    (function(){
+      var jr = document.getElementById('jobRoleSelect');
+      if (jr) jr.addEventListener('change', function(){
+        document.getElementById('jobRoleOther').classList.toggle('hidden', jr.value !== 'ETC');
+      });
+    })();
 
     // 수집정보 제출 후: 실험 방법 설명 → [시작] → 흐름 시작
     function showMethod(pid, profile){
@@ -161,7 +171,8 @@
         urban_delivery_exp: ops==='Y' ? (fd.get('urban_delivery_exp') || null) : null,
         // 없음 → 소속(+임직원이면 직무)
         affiliation: ops==='N' ? (aff || null) : null,
-        job_role: (ops==='N' && aff==='neubility') ? (fd.get('job_role') || null) : null
+        job_role: (ops==='N' && aff==='neubility') ? (fd.get('job_role') || null) : null,
+        job_role_other: (ops==='N' && aff==='neubility' && fd.get('job_role')==='ETC') ? (fd.get('job_role_other') || null) : null
       };
       // 검증
       var need = ['age_band','license','driving_1yr','ops_experience'];
@@ -173,6 +184,7 @@
       if (ops==='N'){
         if (!profile.affiliation){ err.textContent='소속을 선택해주세요.'; return; }
         if (profile.affiliation==='neubility' && !profile.job_role){ err.textContent='직무를 선택해주세요.'; return; }
+        if (profile.job_role==='ETC' && !profile.job_role_other){ err.textContent='직무를 직접 입력해주세요.'; return; }
       }
 
       // 식별 + 흐름 시작
