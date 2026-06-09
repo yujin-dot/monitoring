@@ -148,7 +148,8 @@
     var derived = deriveGroup(profile);
     var marker = (S.config.posthog && S.config.posthog.testMarker) || {};
     var props = Object.assign({}, marker, profile, derived); // 사람(person)에도 테스트 표식
-    if (S.ph && S.ph.identify) S.ph.identify(S.participantId, props);
+    var p = _ph();
+    if (p && p.identify) p.identify(S.participantId, props);
     else console.log('[NeubieAB] identify(폴백):', S.participantId, props);
     // Google Sheets(participants 탭)에도 기록
     sheetSend('participant', Object.assign({
@@ -504,10 +505,19 @@
     } catch (e) { console.warn('[NeubieAB] sheetSend 실패:', e); }
   }
 
+  // posthog 인스턴스를 매번 '현재'로 재해석.
+  // (공식 스니펫은 array.js 로드 후 window.posthog를 실제 인스턴스로 '교체'한다.
+  //  init 시점의 스텁을 캐시해두면 로드 이후 호출이 죽은 큐로 빠져 전송되지 않음 → 항상 live 참조)
+  function _ph() {
+    if (typeof window !== 'undefined' && window.posthog) return window.posthog;
+    return S.ph;
+  }
+
   function _capture(eventName, props) {
     var marker = (S.config && S.config.posthog && S.config.posthog.testMarker) || {};
     var payload = Object.assign({}, marker, props); // 모든 이벤트에 테스트 표식 명시
-    if (S.ph && S.ph.capture) S.ph.capture(eventName, payload);
+    var p = _ph();
+    if (p && p.capture) p.capture(eventName, payload);
     else console.log('[NeubieAB] capture(폴백):', eventName, payload);
   }
 
