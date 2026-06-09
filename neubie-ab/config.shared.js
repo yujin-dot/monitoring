@@ -26,7 +26,7 @@
       // PostHog 공식 스니펫이 HTML에서 self-init (key/host/defaults/person_profiles).
       // 모듈은 testMarker 등록 + 세션리코딩만 담당. 아래 key/host는 참고용(HTML과 동일 유지).
       apiKey: 'phc_gJCAuVDZUnrhDdm4bZ7RwgWOIQ4JEOE2urE77sKd7qT',
-      host: 'https://us.i.posthog.com',
+      host: '/ingest', // 동일 출처 리버스 프록시(vercel.json). UI는 us.posthog.com. (실제 api_host는 HTML 스니펫이 구동)
       sessionRecording: true,
       // ── 테스트 데이터 식별 표식 ──
       // 단일 프로젝트에 기존 운영 데이터와 섞이므로, 모든 이벤트/사람/세션에 표식을 붙여 분리.
