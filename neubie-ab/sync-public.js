@@ -22,7 +22,7 @@ function cp(src, dst) { fs.copyFileSync(src, dst); console.log('  cp', path.rela
 
 // 1) 런타임 모듈
 fs.mkdirSync(path.join(PUB, 'neubie-ab'), { recursive: true });
-['assign.js', 'config.shared.js', 'neubie-ab.js', 'flow.js'].forEach(function (f) {
+['assign.js', 'config.shared.js', 'neubie-ab.js', 'flow.js', 's5-guide.js'].forEach(function (f) {
   cp(path.join(DIR, f), path.join(PUB, 'neubie-ab', f));
 });
 
