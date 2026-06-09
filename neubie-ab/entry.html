@@ -63,9 +63,13 @@
       if (window.crypto && crypto.getRandomValues){ var a = new Uint32Array(1); crypto.getRandomValues(a); return (a[0] % 1000000000) + 1; }
       return Math.floor(Math.random() * 1e9) + 1;
     }
+    // 닉네임은 config.shared.js가 단일 출처 (모듈도 동일 함수로 trial에 nickname 기록 → 동일 닉네임 보장)
     var ADJ = ['날쌘','용감한','꼼꼼한','차분한','명민한','든든한','상냥한','재빠른','늠름한','다정한'];
     var ANI = ['너구리','수달','다람쥐','고라니','부엉이','두더지','오소리','삵','족제비','담비'];
-    function makeNickname(s){ return ADJ[s % ADJ.length] + ANI[Math.floor(s / ADJ.length) % ANI.length] + '-' + s.toString(36); }
+    function makeNickname(s){
+      if (window.NeubieConfig && typeof NeubieConfig.makeNickname === 'function') return NeubieConfig.makeNickname(s);
+      return ADJ[s % ADJ.length] + ANI[Math.floor(s / ADJ.length) % ANI.length] + '-' + s.toString(36); // 폴백
+    }
     var seed = (qs.get('pid') && parseInt(qs.get('pid'), 10) >= 1) ? parseInt(qs.get('pid'), 10) : randomSeed();
     var nickname = makeNickname(seed);
 

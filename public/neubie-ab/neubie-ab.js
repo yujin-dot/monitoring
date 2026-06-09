@@ -55,7 +55,8 @@
     exposures: {},      // scenario별 노출 횟수 (is_first_exposure 판정)
     trial: null,        // 현재 트라이얼 상태
     _videoBound: null,  // 중복 bindVideo 방지
-    mouse: null         // 현재 트라이얼의 마우스 체류/클릭 트래커
+    mouse: null,        // 현재 트라이얼의 마우스 체류/클릭 트래커
+    nickname: null      // seed 결정론적 닉네임 (참가자 식별 표시용)
   };
 
   // ── init ─────────────────────────────────────────────────────
@@ -93,6 +94,8 @@
     } else {
       S.assignment = assignMod.assign(seed);
       S.participantId = 'p' + seed; // 짝비교 키 (3개 링크 동일 seed → 동일 id)
+      // 닉네임은 seed 결정론적 — 모든 트라이얼 페이지(?pid=seed)에서 동일하게 재생성
+      if (typeof S.config.makeNickname === 'function') S.nickname = S.config.makeNickname(seed);
       // 이 링크의 variant가 배정 order에 포함되는지 검증
       if (S.variant && S.assignment.order.indexOf(S.variant) < 0) {
         console.warn('[NeubieAB] seed ' + seed + ' 배정(' + S.assignment.order.join(',') +
@@ -172,6 +175,8 @@
 
     var ctx = {
       scenario: scenario,
+      participant_id: S.participantId,
+      nickname: S.nickname,
       ui_variant: S.variant,
       stimulus_video: (scenario === 3 && a) ? a.s3Video[S.variant] : null,
       sub_test: (scenario === 1 && a) ? a.s1Sub[S.variant] : null,

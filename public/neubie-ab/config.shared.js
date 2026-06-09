@@ -88,6 +88,15 @@
       6: { name: '도착 반응 시간',       value: 'response_ms',        unit: 'ms' }  // 도착알림→도착처리 (클릭창 0~2초)
     },
 
+    // ── 참가자 닉네임 (seed 결정론적; entry·모듈 공용으로 동일 닉네임 보장) ──
+    nicknameAdj: ['날쌘', '용감한', '꼼꼼한', '차분한', '명민한', '든든한', '상냥한', '재빠른', '늠름한', '다정한'],
+    nicknameAni: ['너구리', '수달', '다람쥐', '고라니', '부엉이', '두더지', '오소리', '삵', '족제비', '담비'],
+    makeNickname: function (s) {
+      s = Number(s) || 0;
+      var adj = this.nicknameAdj, ani = this.nicknameAni;
+      return adj[s % adj.length] + ani[Math.floor(s / adj.length) % ani.length] + '-' + s.toString(36);
+    },
+
     // ── Google Sheets 기록 (Apps Script 웹앱) ──
     // 빈 시트 + Apps Script doPost 배포 후 그 웹앱 URL을 endpoint에 넣으면 활성화. 그 전엔 no-op.
     sheets: {
