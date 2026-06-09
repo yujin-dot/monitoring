@@ -143,7 +143,7 @@
         { delay: 0, level: null, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' }
       ],
       6: [
-        { delay: 1000, level: 5, msg: '래미안 리더스원 공동현관에 곧 도착합니다.' },
+        { delay: 12000, level: 5, msg: '래미안 리더스원 공동현관에 곧 도착합니다.' },
         { trigger: 'arrival', level: 5, msg: '래미안 리더스원 공동현관에 도착하였습니다' }
       ]
     },
@@ -241,13 +241,13 @@
         state: { gps: 305 }
       },
 
-      // S6 도착처리 (within) — '도착하였습니다' 알림 = 영상 2초
+      // S6 도착처리 (within) — '곧 도착합니다' 알림 = 영상 12초 (목적지 도착 영상 ~17초)
       6: {
         name: '도착처리', design: 'within',
-        video: '/scenario-videos/scenario6.mp4', // 도착 영상(알림 2초)
-        trigger: { type: 'video', triggerSec: 2 }, // 알림 카드 출현 시점
+        video: '/scenario-videos/scenario6.mp4', // 도착 영상(목적지 도착, ~17초)
+        trigger: { type: 'video', triggerSec: 12 }, // '곧 도착합니다' 인지 시점 = T1
         expectedAction: '[도착 처리] 클릭',
-        success: { kind: 'clickWindow', minMs: 0, maxMs: 2000 }, // 알림 후 2초(영상 2~4초) 내 정확 클릭
+        success: { kind: 'clickWindow', minMs: 0, maxMs: 8000 }, // 알림 후 8초 내 도착 처리 = 성공
         metrics: ['response_ms', 'overshoot_count', 'error'],
         firstExposureOnly: ['overshoot_count', 'error'] // 첫 노출만 분석
       }

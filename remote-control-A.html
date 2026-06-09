@@ -126,7 +126,8 @@
 
   /* camera grid — 항상 2:1 유지, 창 크기에 맞춰 가로·세로 중 작은 쪽 기준으로 축소 */
   .cam-wrap { flex: 1; min-height: 0; container-type: size; display: grid; align-items: start; justify-items: center; }
-  .cam-grid { flex: 1 1 auto; width: 100%; height: 100%; min-height: 0; align-self: stretch;
+  /* 카메라: 항상 2:1(가로:세로) 비율 유지 + 윈도우 가로폭에 맞춰 크기 변동 (세로공간 넘으면 max-height로 클램프) */
+  .cam-grid { flex: 0 0 auto; width: 100%; height: auto; aspect-ratio: 2 / 1; max-height: 100%; min-height: 0;
     display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; border-radius: var(--r-sm); overflow: hidden; }
   .cam { position: relative; background: #1c1f22; overflow: hidden; }
   .cam::before { content: ""; position: absolute; inset: 0;
@@ -582,19 +583,7 @@
   </div>
 </div>
 
-<!-- Tweaks: 시나리오 미리보기 (개발/시연용) -->
-<button class="tweaks-fab" id="tweaksFab">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></svg>
-  시나리오
-</button>
-<div class="tweaks" id="tweaksPanel">
-  <div class="tw-head">
-    <span class="tw-title">시나리오 미리보기</span>
-    <button class="tw-close" id="tweaksClose">&times;</button>
-  </div>
-  <div class="tw-hint">영상·수치·스텝이 즉시 전환됩니다 (계측 미포함)</div>
-  <div id="tweaksList"></div>
-</div>
+<!-- Tweaks(시나리오 미리보기) 버튼 제거됨 — buildTweaks/토글은 요소 부재 시 자동 no-op -->
 
 <!-- Dialogs -->
 <div class="dim" id="dim">
@@ -776,7 +765,7 @@
       { delay: 2000,  level: 4, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' }
     ],
     6: [
-      { delay: 1000,  level: 5, msg: '래미안 리더스원 공동현관에 곧 도착합니다.' },
+      { delay: 12000, level: 5, msg: '래미안 리더스원 공동현관에 곧 도착합니다.' },
       { on: 'arrive', level: 5, msg: '래미안 리더스원 공동현관에 도착하였습니다' }
     ]
   };
@@ -895,13 +884,10 @@
       } else {
         cam.src = (window.NeubieConfig && NeubieConfig.defaultVideo) || ''; // 시나리오 미지정 → 기본 피드
       }
-      if (sc === 2) {                        // S2: [횡단하기] 전까지 메인 영상 정지
-        cam.removeAttribute('autoplay'); try { cam.currentTime = 0; } catch (e) {} cam.pause();
-      } else {                               // 그 외: 재생(autoplay 안전망 + canplay 핸들러로 load 경쟁 회피)
-        cam.setAttribute('autoplay', '');
-        var tryPlay = function () { var p = cam.play(); if (p && p.catch) p.catch(function () {}); };
-        if (cam.readyState >= 2) tryPlay(); else cam.addEventListener('canplay', tryPlay, { once: true });
-      }
+      // 재생(autoplay 안전망 + canplay 핸들러로 load 경쟁 회피). S2는 6캠 영상을 0.5배속으로 천천히 재생.
+      cam.setAttribute('autoplay', '');
+      var tryPlay = function () { if (sc === 2) cam.playbackRate = 0.5; var p = cam.play(); if (p && p.catch) p.catch(function () {}); };
+      if (cam.readyState >= 2) tryPlay(); else cam.addEventListener('canplay', tryPlay, { once: true });
     }
     window.__neubieScenarioStart = startA;   // flow [시작하기]가 호출
 

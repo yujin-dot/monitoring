@@ -170,6 +170,10 @@
       }
       NeubieAB.bindVideo(cam, sc); // video-trigger(S2·S3·S6) 트리거 시점 자동 markStimulus
       scheduleAlerts(sc);          // 시나리오 알림 로그 시점대로 표시
+      if (sc === 2) {              // S2: 6캠 영상을 0.5배속으로 천천히 재생(정지처럼 보이던 문제 해소)
+        var s2play = function () { cam.playbackRate = 0.5; if (cam.play) cam.play().catch(function () {}); };
+        if (cam.readyState >= 2) s2play(); else cam.addEventListener('canplay', s2play, { once: true });
+      }
     }
     window.__neubieScenarioStart = setupScenario; // flow가 [시작하기]에서 호출
 

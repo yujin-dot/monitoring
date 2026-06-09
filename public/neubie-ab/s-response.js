@@ -52,21 +52,28 @@
     document.body.appendChild(t);
     var iv = setInterval(function () { n--; if (n > 0) { t.textContent = '로봇 정보를 확인하세요 · ' + n + '초'; } else { clearInterval(iv); t.remove(); cb(); } }, 1000);
   }
-  // S1: 에러 케이스 선택 UI (정답 여부 미안내)
+  // S1: 3초 카운트다운 후 → 검정 전체화면으로 전환 + 에러 케이스 선택 (정답 여부 미안내)
   function showS1Select() {
     var opts = ['와이파이', 'GPS', '배터리', '적재함 열림'];
-    var panel = document.createElement('div'); panel.id = 's1-select';
-    panel.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90001;background:#fff;border-radius:14px;'
-      + 'box-shadow:0 6px 24px rgba(0,0,0,.25);padding:18px 22px;width:380px;max-width:92vw;font-family:Pretendard,system-ui,sans-serif;';
-    var html = '<div style="font-size:15px;font-weight:700;color:#1A1A1A;margin-bottom:12px;">어떤 항목에 문제가 있었나요? (해당 항목 모두 선택)</div>';
-    opts.forEach(function (o) { html += '<label style="display:flex;align-items:center;gap:8px;padding:8px 0;font-size:14px;color:#434343;cursor:pointer;"><input type="checkbox" value="' + o + '" style="width:18px;height:18px;accent-color:#00BA7C;">' + o + '</label>'; });
-    html += '<button id="s1-submit" style="width:100%;height:48px;margin-top:12px;border:none;border-radius:10px;background:#00BA7C;color:#fff;font:700 15px Pretendard,system-ui,sans-serif;cursor:pointer;">제출</button>';
-    panel.innerHTML = html; document.body.appendChild(panel);
+    var ovl = document.createElement('div'); ovl.id = 's1-select';
+    ovl.style.cssText = 'position:fixed;inset:0;z-index:90001;background:#0E0F11;display:flex;align-items:center;justify-content:center;'
+      + 'font-family:Pretendard,system-ui,sans-serif;';
+    var html = '<div style="width:420px;max-width:90vw;">'
+      + '<div style="font-size:22px;font-weight:800;color:#fff;text-align:center;margin-bottom:6px;">어떤 항목에 문제가 있었나요?</div>'
+      + '<div style="font-size:14px;color:#9DA3AA;text-align:center;margin-bottom:22px;">해당 항목을 모두 선택해주세요</div>';
+    opts.forEach(function (o) {
+      html += '<label style="display:flex;align-items:center;gap:12px;padding:14px 16px;margin-bottom:10px;border:1px solid #2A2D31;'
+        + 'border-radius:12px;font-size:16px;color:#E9E9E9;cursor:pointer;background:#17191C;">'
+        + '<input type="checkbox" value="' + o + '" style="width:20px;height:20px;accent-color:#00BA7C;">' + o + '</label>';
+    });
+    html += '<button id="s1-submit" style="width:100%;height:52px;margin-top:14px;border:none;border-radius:12px;background:#00BA7C;color:#fff;'
+      + 'font:800 16px Pretendard,system-ui,sans-serif;cursor:pointer;">제출</button></div>';
+    ovl.innerHTML = html; document.body.appendChild(ovl);
     document.getElementById('s1-submit').addEventListener('click', function () {
-      var sel = []; panel.querySelectorAll('input:checked').forEach(function (c) { sel.push(c.value); });
+      var sel = []; ovl.querySelectorAll('input:checked').forEach(function (c) { sel.push(c.value); });
       var ab = s1Abnormal();
       var correct = ab.length > 0 && ab.length === sel.length && ab.every(function (x) { return sel.indexOf(x) >= 0; });
-      panel.remove();
+      ovl.remove();
       done({ correct: correct, selected: sel.join('|') });   // 정답 여부는 화면에 안내하지 않음
     }, { once: true });
   }

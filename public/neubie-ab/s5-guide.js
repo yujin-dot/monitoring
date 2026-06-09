@@ -85,11 +85,12 @@
         + '<button id="ev-drawer-x" style="border:none;background:none;font-size:22px;color:#262626;cursor:pointer;line-height:1;">×</button></div>'
       + '<div style="padding:0 20px;display:flex;flex-direction:column;gap:16px;">'
         + '<div style="font-size:15px;color:#434343;line-height:1.5;">서초 래미안 리더스원 112동 1-2</div>'
-        + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;border:1px solid #E9E9E9;border-radius:10px;padding:12px;font-size:14px;font-weight:700;color:#1A1A1A;">탑승층 1층 <span style="color:#9D9D9D;">▸</span> 목적층 5층</div>'
-        + srow('전체', sbtn('호출', true, 'ev-call-btn'), sbtn('취소', false))
+        + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;border:1px solid #E9E9E9;border-radius:10px;padding:12px;background:#fff;font-size:14px;font-weight:700;color:#1A1A1A;">탑승층 1층 <span style="color:#9D9D9D;">▸</span> 목적층 5층</div>'
+        + srow('전체', sbtn('호출', true, 'ev-call-btn'), sbtn('취소', false, 'ev-cancel-btn'))
         + srow('탑승', sbtn('탑승중', false), sbtn('탑승완료', false))
         + srow('하차', sbtn('하차중', false), sbtn('하차완료', false))
         + '<div style="height:1px;background:#E9E9E9;margin-top:4px;"></div>'
+        + '<div id="ev-call-status"></div>'
       + '</div>';
   }
   function closeDrawer(d, isA) {
@@ -101,26 +102,36 @@
     var isA = location.pathname.indexOf('remote-control-A') >= 0;
     var d = document.createElement('div'); d.id = 'ev-drawer';
     if (isA) {
-      // A: 우측 패널을 덮는 오버레이 드로워
-      d.style.cssText = 'position:fixed;top:0;right:0;bottom:0;z-index:' + (Z + 2) + ';width:330px;max-width:92vw;background:#fff;'
+      // A: 우측 패널을 덮는 오버레이 드로워 (배경 Mono50)
+      d.style.cssText = 'position:fixed;top:0;right:0;bottom:0;z-index:' + (Z + 2) + ';width:330px;max-width:92vw;background:#F5F5F5;'
         + 'box-shadow:-4px 0 24px rgba(0,0,0,.18);display:flex;flex-direction:column;font-family:Pretendard,system-ui,sans-serif;'
         + 'transform:translateX(100%);transition:transform .22s ease;';
       d.innerHTML = drawerContent();
       document.body.appendChild(d);
-      requestAnimationFrame(function () { d.style.transform = 'translateX(0)'; });
+      setTimeout(function () { d.style.transform = 'translateX(0)'; }, 20);
     } else {
-      // B(B1/B2): 레이아웃을 밀면서 나오는 플렉스 드로워 (로봇설정 드로워와 동일 메커니즘)
+      // B(B1/B2): 레이아웃을 밀면서 나오는 플렉스 드로워, width 240px 고정 (배경 Mono50)
       var sd = document.getElementById('settings-drawer');
       var parent = sd ? sd.parentNode : document.body;
-      d.style.cssText = 'width:0;min-width:0;overflow:hidden;background:#fff;display:flex;flex-direction:column;flex-shrink:0;align-self:stretch;'
+      d.style.cssText = 'width:0;min-width:0;overflow:hidden;background:#F5F5F5;display:flex;flex-direction:column;flex-shrink:0;align-self:stretch;'
         + 'box-shadow:-2px 0 4px rgba(0,0,0,.12);transition:width .25s ease,min-width .25s ease;font-family:Pretendard,system-ui,sans-serif;';
-      d.innerHTML = '<div style="width:330px;max-width:92vw;height:100%;display:flex;flex-direction:column;overflow-y:auto;">' + drawerContent() + '</div>';
+      d.innerHTML = '<div style="width:240px;max-width:92vw;height:100%;display:flex;flex-direction:column;overflow-y:auto;">' + drawerContent() + '</div>';
       parent.appendChild(d);
-      requestAnimationFrame(function () { d.style.width = '330px'; d.style.minWidth = '330px'; });
+      setTimeout(function () { d.style.width = '240px'; d.style.minWidth = '240px'; }, 20);
     }
     document.getElementById('ev-drawer-x').addEventListener('click', function () { closeDrawer(d, isA); showEV(); });
     var call = document.getElementById('ev-call-btn');
-    if (call) call.addEventListener('click', function () { removeEl('call-tip'); onCall(); /* 드로워 유지 */ }, { once: true });
+    if (call) call.addEventListener('click', function () {
+      removeEl('call-tip');
+      // 호출 비활성화 + 취소 활성화 + '엘리베이터 호출' 상태 노출 (Figma 46444-46722)
+      call.disabled = true;
+      call.style.cssText = 'flex:1;height:46px;border-radius:8px;font:700 14px Pretendard,system-ui,sans-serif;border:1px solid #E9E9E9;background:#F5F5F5;color:#C4C4C4;cursor:default;';
+      var cancel = document.getElementById('ev-cancel-btn');
+      if (cancel) { cancel.disabled = false; cancel.style.cssText = 'flex:1;height:46px;border-radius:8px;font:700 14px Pretendard,system-ui,sans-serif;border:1.5px solid #1A1A1A;background:#fff;color:#1A1A1A;cursor:pointer;'; }
+      var st = document.getElementById('ev-call-status');
+      if (st) st.innerHTML = '<div style="display:flex;align-items:center;gap:8px;font-size:14px;color:#434343;"><span style="width:8px;height:8px;border-radius:50%;background:' + GREEN + ';display:inline-block;"></span>엘리베이터 호출</div>';
+      onCall(); /* 드로워 유지 */
+    }, { once: true });
     // 드로워 슬라이드 완료 후 위치 정확히 잡아 툴팁 표시
     setTimeout(function () { var c = document.getElementById('ev-call-btn'); if (c) tooltip('호출 버튼을 눌러주세요', c.getBoundingClientRect(), 'call-tip'); }, 300);
   }
