@@ -54,7 +54,8 @@
     ph: null,           // posthog
     exposures: {},      // scenario별 노출 횟수 (is_first_exposure 판정)
     trial: null,        // 현재 트라이얼 상태
-    _videoBound: null   // 중복 bindVideo 방지
+    _videoBound: null,  // 중복 bindVideo 방지
+    mouse: null         // 현재 트라이얼의 마우스 체류/클릭 트래커
   };
 
   // ── init ─────────────────────────────────────────────────────
@@ -186,6 +187,7 @@
       pointer: null,   // 포인터 트래커 핸들
       done: false
     };
+    startMouseTracking();   // 시나리오 마우스 체류/클릭 집계 시작
     return ctx;
   }
 
@@ -322,6 +324,73 @@
     return t.pointer;
   }
 
+  // ── 마우스 체류(AOI)/클릭 트래킹 ─────────────────────────────
+  // 시나리오별로 "마우스가 가장 오래 머문 영역 / 체류시간 / 클릭 수 / 클릭 좌표"를 집계.
+  // startTrial에서 시작, markResponse에서 종료 → trial_result 속성 + Sheets 컬럼으로 기록.
+  var MOUSE_SAMPLE_MS = 80;
+  function _aoiDefs() {
+    var a = S.config && S.config.aoi; if (!a) return [];
+    if (a[S.variant]) return a[S.variant];
+    if (S.variant && S.variant.charAt(0) === 'B' && a.B1) return a.B1; // B2 → B1과 동일 구조
+    return a.default || [];
+  }
+  function _aoiAt(defs, x, y) {
+    for (var i = 0; i < defs.length; i++) {
+      var el = document.querySelector(defs[i].selector);
+      if (!el) continue;
+      var r = el.getBoundingClientRect();
+      if (r.width === 0 && r.height === 0) continue;
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return defs[i].label;
+    }
+    return '기타';
+  }
+  function startMouseTracking() {
+    if (typeof document === 'undefined') return;
+    stopMouseTracking();
+    var defs = _aoiDefs();
+    var m = { defs: defs, dwell: {}, clicks: {}, clickPts: [], samples: 0, last: 0, t0: now(), tracking: true, onMove: null, onClick: null };
+    m.onMove = function (e) {
+      if (!m.tracking) return;
+      var t = now(); if (t - m.last < MOUSE_SAMPLE_MS) return; m.last = t;
+      var a = _aoiAt(defs, e.clientX, e.clientY);
+      m.dwell[a] = (m.dwell[a] || 0) + 1; m.samples++;
+    };
+    m.onClick = function (e) {
+      if (!m.tracking) return;
+      var a = _aoiAt(defs, e.clientX, e.clientY);
+      m.clicks[a] = (m.clicks[a] || 0) + 1;
+      if (m.clickPts.length < 200) m.clickPts.push({ x: Math.round(e.clientX), y: Math.round(e.clientY), r: a, t: Math.round(now() - m.t0) });
+    };
+    document.addEventListener('mousemove', m.onMove, true);
+    document.addEventListener('click', m.onClick, true);
+    S.mouse = m;
+  }
+  function stopMouseTracking() {
+    var m = S.mouse; if (!m) return;
+    m.tracking = false;
+    try { document.removeEventListener('mousemove', m.onMove, true); document.removeEventListener('click', m.onClick, true); } catch (e) {}
+  }
+  function mouseSummary() {
+    var m = S.mouse; if (!m) return null;
+    var total = m.samples || 0;
+    var keys = {}; Object.keys(m.dwell).forEach(function (k) { keys[k] = 1; }); Object.keys(m.clicks).forEach(function (k) { keys[k] = 1; });
+    var rows = Object.keys(keys).map(function (k) {
+      var cnt = m.dwell[k] || 0;
+      return { region: k, dwell_ms: cnt * MOUSE_SAMPLE_MS, pct: total ? Number((cnt / total * 100).toFixed(1)) : 0, clicks: m.clicks[k] || 0 };
+    });
+    rows.sort(function (a, b) { return b.dwell_ms - a.dwell_ms; });
+    var top = rows[0] || null;
+    var totalClicks = 0; Object.keys(m.clicks).forEach(function (k) { totalClicks += m.clicks[k]; });
+    return {
+      top_region: top ? top.region : '',
+      top_region_dwell_ms: top ? top.dwell_ms : 0,
+      mouse_samples: total,
+      total_clicks: totalClicks,
+      region_dwell_json: JSON.stringify(rows),
+      click_points_json: JSON.stringify(m.clickPts)
+    };
+  }
+
   // ── markResponse → trial_result 전송 ─────────────────────────
   function markResponse(result) {
     var t = _requireTrial('markResponse');
@@ -377,9 +446,15 @@
       sc.firstExposureOnly.forEach(function (k) { delete ev[k]; });
     }
 
+    // 마우스 체류(AOI)/클릭 집계 종료 → 결과 병합 (PostHog 속성 + Sheets 컬럼)
+    stopMouseTracking();
+    var ms = mouseSummary();
+    if (ms) Object.assign(ev, ms);
+
     _capture('trial_result', ev);
     sheetSend('trial', ev);          // Google Sheets(trials 탭)에도 기록
     S.trial = null;
+    S.mouse = null;
     return ev;
   }
 

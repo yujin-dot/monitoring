@@ -49,6 +49,33 @@
     },
     variantByLayout: { vertical: 'B1', b: 'B1', horizontal: 'B2', a: 'B2' },
 
+    // ── 관심영역(AOI) 정의: 시나리오별 마우스 체류/클릭 분포 집계용 ──────
+    //  variant별 화면 구조가 달라 선택자가 다름. 라벨은 A/B 공통으로 맞춰 집계 호환.
+    //  (겹치는 오버레이는 먼저 매칭되도록 작은 영역을 앞에 배치 → getAOI는 first-match)
+    aoi: {
+      // A(control_A) — remote-control-A.html
+      control_A: [
+        { label: '헤더 (상태바)', selector: '.header' },
+        { label: '알림 내역',    selector: '#alert-stack' },
+        { label: '시나리오 패널', selector: '.stepper' },
+        { label: '음성 송출',    selector: '.volume' },
+        { label: '지도',        selector: '.panel-map' },
+        { label: '로봇 제어 버튼', selector: '.panel-body' },
+        { label: '좌측 네비',    selector: '.rail' },
+        { label: '카메라 영상',   selector: '.cam-wrap' }
+      ],
+      // B1/B2 — public/index.html (기존 사용성 테스트(UT) AOI와 동일)
+      B1: [
+        { label: '헤더 (상태바)', selector: '#nrp-header' },
+        { label: '카메라 영상',   selector: '#camera-section' },
+        { label: '로봇 제어 버튼', selector: '#robot-controls-wrap' },
+        { label: '시나리오 패널', selector: '#scenario-panel' },
+        { label: '알림 내역',    selector: '#log-panel' },
+        { label: '지도',        selector: '#map-section' },
+        { label: '음성 송출',    selector: '#voice-panel' }
+      ]
+    },
+
     // ── Google Sheets 기록 (Apps Script 웹앱) ──
     // 빈 시트 + Apps Script doPost 배포 후 그 웹앱 URL을 endpoint에 넣으면 활성화. 그 전엔 no-op.
     sheets: {
