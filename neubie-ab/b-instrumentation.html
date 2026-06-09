@@ -176,6 +176,7 @@
         var s2play = function () { cam.playbackRate = 0.5; if (cam.play) cam.play().catch(function () {}); };
         if (cam.readyState >= 2) s2play(); else cam.addEventListener('canplay', s2play, { once: true });
       }
+      if (sc === 6) cam.loop = false;   // S6 도착영상은 반복하지 않고 끝에서 정지(보기 모드 포함)
     }
     window.__neubieScenarioStart = setupScenario; // flow가 [시작하기]에서 호출
 

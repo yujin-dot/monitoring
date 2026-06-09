@@ -261,7 +261,7 @@
     }
     if (!src) { console.warn('[NeubieAB] loadScenarioVideo: scenario ' + scenario + ' 영상 src 없음'); return null; }
     videoEl.src = src;
-    if (S.preview) videoEl.loop = true;   // 보기 전용 — 영상 반복
+    videoEl.loop = !!S.preview && Number(scenario) !== 6;   // 보기 전용 반복(단, S6 도착영상은 끝에서 정지)
     return src;
   }
 
