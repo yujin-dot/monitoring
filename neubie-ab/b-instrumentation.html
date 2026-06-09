@@ -37,9 +37,7 @@
       + '.ab-testmode #xwalk-overlay.show{pointer-events:none!important;}'
       + '.ab-testmode #xwalk-overlay.show #xwalk-btn{pointer-events:auto!important;}'
       // vertical(layout-b): 지도가 min-height:340px 때문에 하단 220px 섹션을 넘쳐 화면 밖으로 잘림 → 섹션에 맞춤
-      + 'body.layout-b.ab-testmode #map-section{min-height:0!important;height:100%!important;}'
-      // 새 알림(.latest) 포커스 강조 + 슬라이드인
-      + '.ab-testmode .log-row.latest{background:rgba(248,145,74,0.14)!important;border-radius:4px;animation:logSlideIn .18s ease;}';
+      + 'body.layout-b.ab-testmode #map-section{min-height:0!important;height:100%!important;}';
     document.head.appendChild(_st);
 
     var qs = new URLSearchParams(location.search);
