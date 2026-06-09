@@ -58,7 +58,16 @@
       return;
     }
 
-    var pid = qs.get('pid');
+    // 단일 링크: ?pid가 있으면 그 번호(진행자 부여), 없으면 랜덤 seed 자동 생성 + 고유 닉네임
+    function randomSeed(){
+      if (window.crypto && crypto.getRandomValues){ var a = new Uint32Array(1); crypto.getRandomValues(a); return (a[0] % 1000000000) + 1; }
+      return Math.floor(Math.random() * 1e9) + 1;
+    }
+    var ADJ = ['날쌘','용감한','꼼꼼한','차분한','명민한','든든한','상냥한','재빠른','늠름한','다정한'];
+    var ANI = ['너구리','수달','다람쥐','고라니','부엉이','두더지','오소리','삵','족제비','담비'];
+    function makeNickname(s){ return ADJ[s % ADJ.length] + ANI[Math.floor(s / ADJ.length) % ANI.length] + '-' + s.toString(36); }
+    var seed = (qs.get('pid') && parseInt(qs.get('pid'), 10) >= 1) ? parseInt(qs.get('pid'), 10) : randomSeed();
+    var nickname = makeNickname(seed);
 
     // ── 수집정보 폼 ──
     function seg(name, opts){
@@ -71,7 +80,7 @@
     card.innerHTML =
       '<h1>원격제어 A/B 사용성 테스트</h1>'
       + '<p class="sub">시작 전 아래 정보를 입력해주세요. 모든 항목은 분석용으로만 쓰이며, 테스트 데이터로 분리 저장됩니다.</p>'
-      + '<div class="field" style="margin-top:14px;"><label>참가자 번호 <span class="hint">진행자에게 받은 번호</span></label><input type="number" id="pidInput" min="1" value="'+(pid||'')+'" placeholder="예: 1" inputmode="numeric" /></div>'
+      + '<div class="pid">참가 ID <b>'+nickname+'</b> <span class="hint">자동 부여됨</span></div>'
       + '<form id="f">'
       + '<div class="field"><label>연령대</label><select name="age_band" required>'
         + '<option value="" disabled selected>선택</option>'
@@ -124,10 +133,8 @@
       e.preventDefault();
       var err = document.getElementById('err'); err.textContent='';
       var fd = new FormData(f);
-      // pid
-      var thePid = pid || (document.getElementById('pidInput') && document.getElementById('pidInput').value);
-      if (!thePid || !(parseInt(thePid,10)>=1)) { err.textContent='참가자 번호를 입력해주세요.'; return; }
       var profile = {
+        nickname: nickname,
         age_band: fd.get('age_band'),
         license: fd.get('license'),
         driving_1yr: fd.get('driving_1yr'),
@@ -144,10 +151,10 @@
 
       // 식별 + 흐름 시작
       try {
-        NeubieAB.init({ seed: parseInt(thePid,10), intake: true });
+        NeubieAB.init({ seed: seed, intake: true });
         NeubieAB.identify(profile);
       } catch(ex){ console.warn('identify 실패', ex); }
-      showMethod(thePid, profile);   // → 방법 설명 → [시작] → 첫 트라이얼
+      showMethod(seed, profile);   // → 방법 설명 → [시작] → 첫 트라이얼 (pid=seed)
     });
   })();
   </script>
