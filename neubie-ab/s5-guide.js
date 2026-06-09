@@ -66,32 +66,45 @@
   }
 
   // ── 4. 엘리베이터 호출 드로워 + 5. 호출 툴팁 ──────────────────
+  // 상태 버튼 (active=초록 외곽선 / 그 외=비활성 회색). 첨부 Figma 디자인 기준.
+  function sbtn(label, active, id) {
+    var base = 'flex:1;height:46px;border-radius:8px;font:700 14px Pretendard,system-ui,sans-serif;';
+    var look = active
+      ? 'border:1.5px solid ' + GREEN + ';background:#fff;color:' + GREEN + ';cursor:pointer;'
+      : 'border:1px solid #E9E9E9;background:#F5F5F5;color:#C4C4C4;cursor:default;';
+    return '<button ' + (id ? 'id="' + id + '" ' : '') + (active ? '' : 'disabled ') + 'style="' + base + look + '">' + label + '</button>';
+  }
+  function srow(label, b1, b2) {
+    return '<div style="display:flex;align-items:center;gap:10px;">'
+      + '<span style="width:36px;font-size:14px;color:#434343;flex-shrink:0;">' + label + '</span>'
+      + '<div style="flex:1;display:flex;gap:10px;">' + b1 + b2 + '</div></div>';
+  }
   function openDrawer() {
     var d = document.createElement('div');
     d.id = 'ev-drawer';
-    d.style.cssText = 'position:fixed;top:0;right:0;bottom:0;z-index:' + (Z + 2) + ';width:320px;max-width:92vw;background:#fff;'
-      + 'box-shadow:-4px 0 24px rgba(0,0,0,.25);display:flex;flex-direction:column;font-family:Pretendard,system-ui,sans-serif;'
+    d.style.cssText = 'position:fixed;top:0;right:0;bottom:0;z-index:' + (Z + 2) + ';width:330px;max-width:92vw;background:#fff;'
+      + 'box-shadow:-4px 0 24px rgba(0,0,0,.18);display:flex;flex-direction:column;font-family:Pretendard,system-ui,sans-serif;'
       + 'transform:translateX(100%);transition:transform .22s ease;';
     d.innerHTML =
-      '<div style="padding:18px 20px;border-bottom:1px solid #E9E9E9;display:flex;align-items:center;justify-content:space-between;">'
-        + '<b style="font-size:17px;color:#1A1A1A;">엘리베이터 호출</b>'
-        + '<button id="ev-drawer-x" style="border:none;background:none;font-size:20px;color:#7B7B7B;cursor:pointer;">×</button></div>'
-      + '<div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;flex:1;">'
-        + '<div style="display:flex;justify-content:space-between;font-size:14px;color:#434343;"><span>현재 층</span><b>1F</b></div>'
-        + '<div style="display:flex;justify-content:space-between;font-size:14px;color:#434343;"><span>목적 층</span><b>3F</b></div>'
-        + '<div style="display:flex;justify-content:space-between;font-size:14px;color:#434343;"><span>호출 방식</span><b>자동 탑승</b></div>'
-      + '</div>'
-      + '<div style="padding:16px 20px;border-top:1px solid #E9E9E9;">'
-        + '<button id="ev-call-btn" style="width:100%;height:52px;border:none;border-radius:' + RADIUS + ';background:' + GREEN + ';color:#fff;font:700 16px Pretendard,system-ui,sans-serif;cursor:pointer;">호출</button>'
+      '<div style="padding:20px 20px 14px;display:flex;align-items:center;justify-content:space-between;">'
+        + '<b style="font-size:18px;color:#1A1A1A;">엘리베이터</b>'
+        + '<button id="ev-drawer-x" style="border:none;background:none;font-size:22px;color:#262626;cursor:pointer;line-height:1;">×</button></div>'
+      + '<div style="padding:0 20px;display:flex;flex-direction:column;gap:16px;">'
+        + '<div style="font-size:15px;color:#434343;line-height:1.5;">서초 래미안 리더스원 112동 1-2</div>'
+        + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;border:1px solid #E9E9E9;border-radius:10px;padding:12px;font-size:14px;font-weight:700;color:#1A1A1A;">탑승층 1층 <span style="color:#9D9D9D;">▸</span> 목적층 5층</div>'
+        + srow('전체', sbtn('호출', true, 'ev-call-btn'), sbtn('취소', false))
+        + srow('탑승', sbtn('탑승중', false), sbtn('탑승완료', false))
+        + srow('하차', sbtn('하차중', false), sbtn('하차완료', false))
+        + '<div style="height:1px;background:#E9E9E9;margin-top:4px;"></div>'
       + '</div>';
     document.body.appendChild(d);
     requestAnimationFrame(function () { d.style.transform = 'translateX(0)'; });
-    document.getElementById('ev-drawer-x').addEventListener('click', function () { d.remove(); showEV(); /* 다시 안내 */ });
+    document.getElementById('ev-drawer-x').addEventListener('click', function () { d.remove(); showEV(); });
     var call = document.getElementById('ev-call-btn');
-    var tip = tooltip('호출 버튼을 눌러주세요', call.getBoundingClientRect(), 'call-tip');
+    tooltip('호출 버튼을 눌러주세요', call.getBoundingClientRect(), 'call-tip');
     call.addEventListener('click', function () {
-      removeEl('call-tip'); d.remove();
-      onCall();
+      removeEl('call-tip');
+      onCall();   // 드로워는 유지(닫지 않음)
     }, { once: true });
   }
 
@@ -104,43 +117,52 @@
     setTimeout(showVolumeGuide, 3000);
   }
 
-  // ── 7. 음량 0.2 가이드 + 계측 ────────────────────────────────
+  // ── 7. 음량 0.2 가이드(텍스트만, 좌측 상단) + 실제 음량 컨트롤 추적 ──
   function showVolumeGuide() {
-    var panel = document.createElement('div');
-    panel.id = 'ev-vol';
-    panel.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:' + (Z + 6) + ';'
-      + 'background:#fff;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.25);padding:18px 22px;width:360px;max-width:92vw;'
-      + 'font-family:Pretendard,system-ui,sans-serif;';
-    panel.innerHTML =
-      '<div style="font-size:15px;font-weight:700;color:#1A1A1A;">음량 볼륨을 <span style="color:' + GREEN + '">0.2</span>로 낮춰주세요</div>'
-      + '<div style="display:flex;align-items:center;gap:10px;margin-top:14px;">'
-        + '<span style="font-size:13px;color:#7B7B7B;">음량</span>'
-        + '<input id="ev-vol-slider" type="range" min="0" max="1" step="0.01" value="0.8" style="flex:1;accent-color:' + GREEN + ';">'
-        + '<b id="ev-vol-val" style="font-size:14px;color:#1A1A1A;width:34px;text-align:right;">0.80</b>'
-      + '</div>';
-    document.body.appendChild(panel);
-    var slider = document.getElementById('ev-vol-slider');
-    var valEl = document.getElementById('ev-vol-val');
-    slider.addEventListener('input', function () { valEl.textContent = parseFloat(slider.value).toFixed(2); });
+    var g = document.createElement('div');
+    g.id = 'ev-vol-guide';
+    g.innerHTML = '음량 볼륨을 <span style="color:#7CF0C4">0.2</span>로 낮춰주세요';
+    g.style.cssText = 'position:fixed;top:16px;left:16px;z-index:' + (Z + 6) + ';background:' + GREEN800 + ';color:#fff;'
+      + 'font:700 14px Pretendard,system-ui,sans-serif;padding:12px 16px;border-radius:10px;box-shadow:0 4px 16px rgba(0,0,0,.3);';
+    document.body.appendChild(g);
+    try { if (window.NeubieAB) NeubieAB.markStimulus(); } catch (e) {} // 가이드 표시 = T1
 
-    // 계측: 가이드 표시 = T1, 슬라이더 추적, 안착(릴리즈) 시 응답
-    try {
-      if (window.NeubieAB) {
-        NeubieAB.markStimulus();
-        NeubieAB.trackSlider(slider, { target: 0.2, tolerance: 0.02 });
-      }
-    } catch (e) {}
-    function release() {
-      var ok = Math.abs(parseFloat(slider.value) - 0.2) <= 0.02;
-      try { if (window.NeubieAB) NeubieAB.markResponse({ success: ok }); } catch (e) {}
-      if (ok) {
-        valEl.textContent = '0.20';
-        setTimeout(function () { if (window.NeubieFlow) NeubieFlow.complete({ success: true }); }, 400);
-        slider.removeEventListener('mouseup', release); slider.removeEventListener('touchend', release);
-      }
+    function done() {
+      try { if (window.NeubieAB) NeubieAB.markResponse({ success: true }); } catch (e) {}
+      g.remove();
+      setTimeout(function () { if (window.NeubieFlow) NeubieFlow.complete({ success: true }); }, 400);
     }
-    slider.addEventListener('mouseup', release);
-    slider.addEventListener('touchend', release);
+    trackRealVolume(done);
+  }
+
+  // 원격제어의 실제 음량 컨트롤을 추적 (B: range 슬라이더 / A: +/- 버튼 #volVal). 가이드는 슬라이더 안 만듦.
+  function trackRealVolume(onDone) {
+    var slider = document.querySelector('#voice-panel input[type="range"]');
+    if (!slider) {
+      var rs = document.querySelectorAll('input[type="range"]');
+      for (var i = 0; i < rs.length; i++) { if (rs[i].max === '10' || rs[i].max === '1') { slider = rs[i]; break; } }
+    }
+    if (slider) { // B 슬라이더: Fitts 측정
+      var max = parseFloat(slider.max) || 1;
+      var target = (max > 1) ? max * 0.2 : 0.2;            // 0~10 → 2, 0~1 → 0.2
+      var tol = (max > 1) ? Math.max(0.5, max * 0.03) : 0.03;
+      try { if (window.NeubieAB) NeubieAB.trackSlider(slider, { target: target, tolerance: tol }); } catch (e) {}
+      var fired = false;
+      function chk() { if (!fired && Math.abs(parseFloat(slider.value) - target) <= tol) { fired = true; onDone(); } }
+      slider.addEventListener('mouseup', chk); slider.addEventListener('change', chk);
+      return;
+    }
+    // A: +/- 버튼 → 값 표시(#volVal) 폴링, 목표 도달 시 응답
+    var valEl = document.getElementById('volVal') || document.getElementById('vol-val');
+    if (valEl) {
+      var fired2 = false;
+      var iv = setInterval(function () {
+        var txt = valEl.textContent || ''; var n = parseFloat(txt.replace(/[^0-9.]/g, '')); if (isNaN(n)) return;
+        var dec = txt.indexOf('.') >= 0;                   // "0.8" 형태면 0~1 스케일
+        var ok = dec ? (Math.abs(n - 0.2) <= 0.03) : (n <= 20); // 0~100 스케일이면 20 이하
+        if (ok && !fired2) { fired2 = true; clearInterval(iv); onDone(); }
+      }, 300);
+    }
   }
 
   // ── init ─────────────────────────────────────────────────────
