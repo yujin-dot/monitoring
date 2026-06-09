@@ -215,6 +215,8 @@
       }
       if (sc === 6) {
         cam.loop = false;   // S6 도착영상은 반복하지 않고 끝에서 정지(보기 모드 포함)
+        // B 프로토타입의 ended→재생 루프 차단: 끝나기 직전에 일시정지해 마지막 프레임에서 멈춤
+        cam.addEventListener('timeupdate', function () { if (cam.duration && cam.currentTime >= cam.duration - 0.25) cam.pause(); });
         // 로봇이 경로 중간→도착 마커까지 '초록선을 따라' 이동(영상시간 기반, 11초에 도착 마커 도달) → 11초에 속도 0.00
         if (!window.__s6Timer) window.__s6Timer = setInterval(function () {
           try {

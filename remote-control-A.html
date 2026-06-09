@@ -971,8 +971,10 @@
       // S6: 로봇이 경로 중간→도착 마커까지 초록선 따라 이동(영상 11초에 마커 도달), 11초에 속도 0.00
       if (sc === 6) {
         if (window.__aRoute) window.__aRoute.startS6(cam);
+        cam.loop = false;
         var arrived = false;
         cam.addEventListener('timeupdate', function () {
+          if (cam.duration && cam.currentTime >= cam.duration - 0.25) cam.pause(); // 한 번 재생 후 마지막 프레임에서 정지
           if (arrived || cam.currentTime < 11) return;
           arrived = true;
           var sp = document.getElementById('st-speed');
