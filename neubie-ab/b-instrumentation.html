@@ -83,8 +83,10 @@
       _alertTimers.forEach(clearTimeout); _alertTimers = []; // 이전 시나리오의 대기중 알림만 취소(표시된 로그는 쌓아둠)
       var list = (window.NeubieConfig && NeubieConfig.scenarioAlerts && NeubieConfig.scenarioAlerts[scn]) || [];
       list.forEach(function (a) {
-        if (a.trigger) { // [횡단하기]/[도착 처리] 클릭 시
-          var id = a.trigger === 'xwalk' ? 'xwalk-btn' : (a.trigger === 'arrival' ? 'btn-arrival' : null);
+        if (a.trigger === 'arrival') { // 도착 알림은 모달[확인]에서 처리(showScModal 래퍼) — 여기선 무시
+          return;
+        } else if (a.trigger) { // [횡단하기] 클릭 시
+          var id = a.trigger === 'xwalk' ? 'xwalk-btn' : null;
           var btn = id && document.getElementById(id);
           if (btn) btn.addEventListener('click', function () { appendAlert(a.level, a.msg); }, { once: true });
         } else if ((a.delay || 0) <= 0) {
@@ -93,6 +95,46 @@
           _alertTimers.push(setTimeout(function () { appendAlert(a.level, a.msg); }, a.delay));
         }
       });
+    }
+
+    // ── S6 시나리오바 보정 + 음량 14단계 + 도착 2단계 완료 (B 전용, 주입 블록에 유지) ──
+    // (1)(2) 시나리오 6: 정적 export는 panelActive:-1(스텝/목적지 빈값) → 목적지 도착 스텝(2)·장소명 보정
+    try {
+      if (typeof SCENARIO_TESTS !== 'undefined') {
+        SCENARIO_TESTS.forEach(function (t) {
+          if (t.sc === 6) { t.panelActive = 2; t.destLabel = '래미안 리더스원 공동현관'; }
+        });
+      }
+    } catch (e) {}
+
+    // 음량 14단계: 0.2/0.4/0.6/0.8/1/2/3/4/5/6/7/8/9/10 (A/B 공통). 기본 5(인덱스 8).
+    (function () {
+      var STEPS = [0.2, 0.4, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+      var s = document.getElementById('voice-vol-slider') || document.querySelector('#voice-panel .voice-vol-row input[type="range"]');
+      var val = document.getElementById('vol-val');
+      if (s) {
+        s.id = 'voice-vol-slider';
+        s.removeAttribute('oninput');
+        s.min = '0'; s.max = String(STEPS.length - 1); s.step = '1'; s.value = '8';
+        var render = function () { if (val) val.textContent = STEPS[parseInt(s.value, 10)]; };
+        s.addEventListener('input', render); render();
+      }
+    })();
+
+    // (3) 도착 처리: [도착 처리]→모달[확인]까지 완료해야 성공. 확인 시 'Lv5 도착하였습니다' 알림 후 완료 훅.
+    if (typeof window.showScModal === 'function') {
+      var _origShowScModal = window.showScModal;
+      window.showScModal = function (title, onConfirm) {
+        _origShowScModal(title, function () {
+          if (typeof onConfirm === 'function') onConfirm();
+          if (sc === 6 && title && title.indexOf('도착') >= 0) {
+            var arr = ((window.NeubieConfig && NeubieConfig.scenarioAlerts && NeubieConfig.scenarioAlerts[6]) || [])
+              .filter(function (a) { return a.trigger === 'arrival'; })[0];
+            appendAlert(arr ? arr.level : 5, arr ? arr.msg : '도착하였습니다');
+            if (typeof window.__neubieArrivalConfirmed === 'function') window.__neubieArrivalConfirmed();
+          }
+        });
+      };
     }
 
     // 시나리오 셋업: B 자체 시스템 loadScenarioTest(영상+횡단보도+상태)에 위임 + 계측 바인딩.
@@ -110,7 +152,15 @@
         if (sc === 1 && ctx.sub_test) testNum = ctx.sub_test;                       // 1=wifi500, 2=battery17
         else if (sc === 3 && ctx.stimulus_video) testNum = ctx.stimulus_video === 'bump' ? 2 : 1; // taxi=1, bump=2
         var idx = SCENARIO_TESTS.findIndex(function (t) { return t.sc === sc && t.test === testNum; });
-        if (idx >= 0) { loadScenarioTest(idx); }          // ← 횡단보도 등 시나리오 UI 표시
+        if (idx >= 0) {
+          loadScenarioTest(idx);                          // ← 횡단보도 등 시나리오 UI 표시
+          var _t = SCENARIO_TESTS[idx];                   // S6 등: 활성 스텝 장소명/라벨 보정
+          if (_t && _t.destLabel) {
+            var _nm = document.getElementById('active-step-name'); if (_nm) _nm.textContent = _t.destLabel;
+            var _steps = document.querySelectorAll('#scenario-panel .step');
+            if (_steps[_t.panelActive]) { var _l = _steps[_t.panelActive].querySelector('.step-lbl'); if (_l) _l.textContent = _t.destLabel; }
+          }
+        }
         else { try { state.paused = true; state.autoAdvance = false; } catch (e) {} NeubieAB.loadScenarioVideo(cam, sc); if (cam.load) cam.load(); if (cam.play) cam.play().catch(function () {}); }
       } else { // 폴백: loadScenarioTest 없으면 영상만
         try { state.paused = true; state.autoAdvance = false; } catch (e) {}

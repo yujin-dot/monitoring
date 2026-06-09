@@ -126,7 +126,7 @@
 
   /* camera grid — 항상 2:1 유지, 창 크기에 맞춰 가로·세로 중 작은 쪽 기준으로 축소 */
   .cam-wrap { flex: 1; min-height: 0; container-type: size; display: grid; align-items: start; justify-items: center; }
-  .cam-grid { flex: 1 1 auto; width: 100%; min-height: 0;
+  .cam-grid { flex: 1 1 auto; width: 100%; height: 100%; min-height: 0; align-self: stretch;
     display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; border-radius: var(--r-sm); overflow: hidden; }
   .cam { position: relative; background: #1c1f22; overflow: hidden; }
   .cam::before { content: ""; position: absolute; inset: 0;
@@ -546,7 +546,7 @@
         </button>
         <div class="volume">
           <button id="volDown" aria-label="음량 내리기">−</button>
-          <span class="lbl">음량 <span id="volVal">99</span></span>
+          <span class="lbl">음량 <span id="volVal">5</span></span>
           <button id="volUp" aria-label="음량 올리기">+</button>
         </div>
        </div><!-- /panel-body -->
@@ -632,17 +632,22 @@
   document.getElementById('btnClose').addEventListener('click', () => openDialog('end'));
   document.getElementById('dlgCancel').addEventListener('click', closeDialog);
   document.getElementById('dlgConfirm').addEventListener('click', function () {
-    if (window._pendingDialog === 'arrive' && Number(window._scenario) === 6) fireEventAlert(6, 'arrive'); // 도착 처리 → 도착 알림
+    var isArrive = window._pendingDialog === 'arrive' && Number(window._scenario) === 6;
+    if (isArrive) fireEventAlert(6, 'arrive'); // 도착 처리 확인 → 'Lv5 도착하였습니다' 알림
     closeDialog();
+    // [도착 처리]→모달[확인]까지 완료해야 시나리오 성공 처리(알림 노출 뒤 완료)
+    if (isArrive && typeof window.__neubieArrivalConfirmed === 'function') window.__neubieArrivalConfirmed();
   });
   dim.addEventListener('click', e => { if (e.target === dim) closeDialog(); });
 
-  // volume (0–100)
+  // volume — 14단계: 0.2/0.4/0.6/0.8/1/2/3/4/5/6/7/8/9/10 (A/B 공통)
+  const VOLUME_STEPS = [0.2, 0.4, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
   const volVal = document.getElementById('volVal');
-  let vol = 99;
-  const setVol = v => { vol = Math.max(0, Math.min(100, v)); volVal.textContent = vol; };
-  document.getElementById('volUp').addEventListener('click', () => setVol(vol + 1));
-  document.getElementById('volDown').addEventListener('click', () => setVol(vol - 1));
+  let volIdx = 8; // 기본 5
+  const renderVol = () => { volVal.textContent = VOLUME_STEPS[volIdx]; };
+  renderVol();
+  document.getElementById('volUp').addEventListener('click', () => { volIdx = Math.min(VOLUME_STEPS.length - 1, volIdx + 1); renderVol(); });
+  document.getElementById('volDown').addEventListener('click', () => { volIdx = Math.max(0, volIdx - 1); renderVol(); });
 
   // ── 시나리오 스텝 이동 ──────────────────────────────────────
   function bindStepButtons() {
@@ -770,8 +775,8 @@
       { delay: 2000,  level: 4, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' }
     ],
     6: [
-      { delay: 1000,  level: 5, msg: '강남구 강남대로 468 충림빌딩에 곧 도착합니다.' },
-      { on: 'arrive', level: 5, msg: '강남구 강남대로 468 충림빌딩에 도착했습니다' }
+      { delay: 1000,  level: 5, msg: '래미안 리더스원 공동현관에 곧 도착합니다.' },
+      { on: 'arrive', level: 5, msg: '래미안 리더스원 공동현관에 도착하였습니다' }
     ]
   };
   var ALERT_ICON = {

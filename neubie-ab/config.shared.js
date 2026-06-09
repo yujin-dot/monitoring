@@ -95,8 +95,8 @@
         { delay: 0, level: null, msg: '[자비에 송수신 네트워크 최대 속도 1Gbps 미만]' }
       ],
       6: [
-        { delay: 1000, level: 5, msg: '강남구 강남대로 468 충림빌딩에 곧 도착합니다.' },
-        { trigger: 'arrival', level: 5, msg: '강남구 강남대로 468 충림빌딩에 도착했습니다' }
+        { delay: 1000, level: 5, msg: '래미안 리더스원 공동현관에 곧 도착합니다.' },
+        { trigger: 'arrival', level: 5, msg: '래미안 리더스원 공동현관에 도착하였습니다' }
       ]
     },
 

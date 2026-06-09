@@ -114,8 +114,10 @@
       once(sb, function () { done({}); });
 
     } else if (sc === 6) {
-      // T1: 도착 알림 영상(2s, setup bindVideo). T3: 도착 처리
-      once(q('#btn-arrival', '#btnArrive'), function () { done({}); });
+      // T1: 도착 알림 영상(2s, setup bindVideo).
+      // T3: [도착 처리] → 모달 [확인]까지 눌러야 성공. 페이지(A: dlgConfirm / B: showScModal 래퍼)가
+      //     'Lv5 도착하였습니다' 알림을 띄운 뒤 이 훅을 호출 → 응답 기록 + (2초 뒤) 완료.
+      window.__neubieArrivalConfirmed = function () { done({ success: true }); };
     }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(init, 80); });

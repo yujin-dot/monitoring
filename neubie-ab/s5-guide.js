@@ -157,32 +157,25 @@
   }
 
   // 원격제어의 실제 음량 컨트롤을 추적 (B: range 슬라이더 / A: +/- 버튼 #volVal). 가이드는 슬라이더 안 만듦.
+  // 음량은 A/B 공통 14단계: 0.2/0.4/0.6/0.8/1/2/3/4/5/6/7/8/9/10 → 목표 0.2(최솟값, 슬라이더 인덱스 0)
   function trackRealVolume(onDone) {
-    var slider = document.querySelector('#voice-panel input[type="range"]');
-    if (!slider) {
-      var rs = document.querySelectorAll('input[type="range"]');
-      for (var i = 0; i < rs.length; i++) { if (rs[i].max === '10' || rs[i].max === '1') { slider = rs[i]; break; } }
-    }
-    if (slider) { // B 슬라이더: Fitts 측정
-      var max = parseFloat(slider.max) || 1;
-      var target = (max > 1) ? max * 0.2 : 0.2;            // 0~10 → 2, 0~1 → 0.2
-      var tol = (max > 1) ? Math.max(0.5, max * 0.03) : 0.03;
-      try { if (window.NeubieAB) NeubieAB.trackSlider(slider, { target: target, tolerance: tol }); } catch (e) {}
+    function isPoint2(n) { return !isNaN(n) && Math.abs(n - 0.2) < 1e-6; }
+    var slider = document.getElementById('voice-vol-slider') || document.querySelector('#voice-panel input[type="range"]');
+    if (slider) { // B 슬라이더: Fitts 측정 (인덱스 0 = 음량 0.2)
+      try { if (window.NeubieAB) NeubieAB.trackSlider(slider, { target: 0, tolerance: 0 }); } catch (e) {}
       var fired = false;
-      function chk() { if (!fired && Math.abs(parseFloat(slider.value) - target) <= tol) { fired = true; onDone(); } }
-      slider.addEventListener('mouseup', chk); slider.addEventListener('change', chk);
+      function chk() { if (!fired && parseInt(slider.value, 10) === 0) { fired = true; onDone(); } }
+      slider.addEventListener('mouseup', chk); slider.addEventListener('change', chk); slider.addEventListener('input', chk);
       return;
     }
-    // A: +/- 버튼 → 값 표시(#volVal) 폴링, 목표 도달 시 응답
+    // A: +/- 버튼 → 값 표시(#volVal) 폴링, 0.2 도달 시 응답
     var valEl = document.getElementById('volVal') || document.getElementById('vol-val');
     if (valEl) {
       var fired2 = false;
       var iv = setInterval(function () {
-        var txt = valEl.textContent || ''; var n = parseFloat(txt.replace(/[^0-9.]/g, '')); if (isNaN(n)) return;
-        var dec = txt.indexOf('.') >= 0;                   // "0.8" 형태면 0~1 스케일
-        var ok = dec ? (Math.abs(n - 0.2) <= 0.03) : (n <= 20); // 0~100 스케일이면 20 이하
-        if (ok && !fired2) { fired2 = true; clearInterval(iv); onDone(); }
-      }, 300);
+        var n = parseFloat((valEl.textContent || '').replace(/[^0-9.]/g, ''));
+        if (isPoint2(n) && !fired2) { fired2 = true; clearInterval(iv); onDone(); }
+      }, 250);
     }
   }
 

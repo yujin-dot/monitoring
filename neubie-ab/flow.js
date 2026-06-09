@@ -114,7 +114,7 @@
         var c = camVideo();
         if (c) { try { c.currentTime = 0; } catch (e) {} if (c.play) c.play().catch(function () {}); }
       }
-      mountFinishButton();
+      // (수동 '완료 →' 버튼은 제거 — 각 시나리오의 응답 액션으로만 완료)
     };
   }
 
