@@ -155,14 +155,21 @@
     document.body.appendChild(g);
     try { if (window.NeubieAB) NeubieAB.markStimulus(); } catch (e) {} // 가이드 표시 = T1
 
+    function finish() { if (window.NeubieFlow) NeubieFlow.complete({ success: true }); }
     function done() {
       try { if (window.NeubieAB) NeubieAB.markResponse({ success: true }); } catch (e) {}
-      g.remove();
-      // 가이드 동작 종료 → 남은 툴팁/드로워 정리
+      g.remove();                              // 음량 가이드 텍스트만 제거
       removeEl('ev-tip'); removeEl('call-tip');
-      var dr = document.getElementById('ev-drawer'); if (dr) dr.remove();
-      // 완료는 2초 뒤
-      setTimeout(function () { if (window.NeubieFlow) NeubieFlow.complete({ success: true }); }, 2000);
+      // EV 네비게이션 드로워는 유지 — 사용자가 X를 눌러 직접 닫아야 완료
+      var dr = document.getElementById('ev-drawer');
+      var x = document.getElementById('ev-drawer-x');
+      if (dr && x) {
+        var isA = location.pathname.indexOf('remote-control-A') >= 0;
+        var nx = x.cloneNode(true); x.parentNode.replaceChild(nx, x);   // 기존 닫기(→showEV) 핸들러 제거
+        nx.addEventListener('click', function () { closeDrawer(dr, isA); setTimeout(finish, 320); });
+      } else {
+        setTimeout(finish, 800);               // 드로워 없으면(예외) 바로 진행
+      }
     }
     trackRealVolume(done);
   }

@@ -210,7 +210,9 @@
   .map { width: 100%; height: 300px; border-radius: var(--r-sm); overflow: hidden; position: relative;
     background: #EAEEF0; flex: 0 0 auto; border: 1px solid var(--mono-100); }
   @keyframes mapPan { from { transform: scale(1.2) translateY(4%); } to { transform: scale(1.2) translateY(-4%); } }
-  .map .base { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.2); transform-origin: center; animation: mapPan 10s ease-in-out infinite alternate; }
+  .map .base { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.08); transform-origin: center; }
+  /* 로봇이 경로를 따라 이동(B 시안과 동일) — 지도 패닝 대신 경로 SVG 오버레이 */
+  .map #a-route { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; }
   .map .ov { position: absolute; z-index: 2; }
   .map .badge { left: 10px; top: 10px; display: flex; align-items: center; gap: 6px;
     background: var(--primary-500); color: #fff; font-size: 12px; font-weight: 700;
@@ -223,10 +225,7 @@
   .map .locate { right: 10px; bottom: 10px; width: 34px; height: 34px; border-radius: 50%;
     background: var(--primary-500); box-shadow: var(--sh-1); display: grid; place-items: center; border: none; color: #fff; }
   .map .compass svg, .map .locate svg { width: 18px; height: 18px; }
-  .map .robot { left: 50%; top: 52%; transform: translate(-50%,-50%); z-index: 3; }
-  .map .robot .ring { width: 30px; height: 30px; border-radius: 50%; background: var(--secondary-500);
-    border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.3); display: grid; place-items: center; color: #fff; }
-  .map .robot .ring svg { width: 16px; height: 16px; }
+  .map .robot { display: none; }   /* 기존 중앙 로봇 점 → 경로 로봇 마커로 대체 */
 
   /* ── 알림 팝업 (Alerts: Light) — 토스트 오버레이(레이아웃 영향 없음), 같은 위치에 겹쳐 쌓임(최신 앞) ── */
   #alert-stack { position: fixed; top: 85px; left: 72px; right: 320px; height: 44px; z-index: 40; pointer-events: none; }
@@ -575,7 +574,20 @@
           <button class="ov locate" title="현재 위치">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>
           </button>
-          <div class="ov robot"><div class="ring"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4l7 14-7-4-7 4 7-14z"/></svg></div></div>
+          <svg class="ov" id="a-route">
+            <path id="a-route-line" stroke="#00BA7C" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.92"/>
+            <path id="a-route-dash" stroke="#fff" stroke-width="1.5" fill="none" stroke-dasharray="6 12" stroke-linecap="round" opacity="0.7"/>
+            <g id="a-dest-g">
+              <rect x="-26" y="-42" width="52" height="26" rx="7" fill="#FA5952"/>
+              <text x="0" y="-24" text-anchor="middle" fill="#fff" font-size="13" font-weight="700" font-family="Pretendard,sans-serif">도착</text>
+              <path d="M-5,-16 Q0,-9 5,-16" fill="#FA5952"/>
+            </g>
+            <g id="a-robot-g">
+              <circle cx="0" cy="0" r="22" fill="rgba(66,108,255,0.12)"/>
+              <circle cx="0" cy="0" r="13" fill="rgba(66,108,255,0.18)"/>
+              <circle cx="0" cy="0" r="7" fill="#fff" stroke="#426CFF" stroke-width="1.6"/>
+            </g>
+          </svg>
         </div>
        </div>
       </aside>
@@ -713,6 +725,38 @@
   }
   window.applyScenario = applyScenario;
 
+  // ── A 미니맵 경로 엔진 (B 시안과 동일: 초록 경로 + 도착 마커 + 로봇 이동) ──
+  (function () {
+    var ROUTE = [{ x: 0.16, y: 0.84 }, { x: 0.30, y: 0.64 }, { x: 0.46, y: 0.52 }, { x: 0.63, y: 0.36 }, { x: 0.82, y: 0.20 }];
+    var t = 0.30, moving = false, frozen = false, last = 0;
+    function el(id) { return document.getElementById(id); }
+    function curveD(p) { var d = 'M' + p[0].x + ',' + p[0].y; for (var i = 0; i < p.length - 1; i++) { var a = p[i], b = p[i + 1], mx = a.x + (b.x - a.x) * 0.5; d += ' C' + mx + ',' + a.y + ' ' + mx + ',' + b.y + ' ' + b.x + ',' + b.y; } return d; }
+    function pointAtT(p, tt) {
+      var segs = [], total = 0, i;
+      for (i = 0; i < p.length - 1; i++) { var dx = p[i + 1].x - p[i].x, dy = p[i + 1].y - p[i].y, l = Math.sqrt(dx * dx + dy * dy); segs.push(l); total += l; }
+      var target = tt * total, acc = 0;
+      for (i = 0; i < segs.length; i++) { if (acc + segs[i] >= target && segs[i] > 0) { var f = (target - acc) / segs[i]; return { x: p[i].x + (p[i + 1].x - p[i].x) * f, y: p[i].y + (p[i + 1].y - p[i].y) * f }; } acc += segs[i]; }
+      return { x: p[p.length - 1].x, y: p[p.length - 1].y };
+    }
+    function draw() {
+      var map = document.querySelector('.map'), svg = el('a-route'); if (!map || !svg) return;
+      var W = map.clientWidth, H = map.clientHeight; if (!W || !H) return;
+      svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+      var pts = ROUTE.map(function (w) { return { x: w.x * W, y: w.y * H }; });
+      var d = curveD(pts);
+      el('a-route-line').setAttribute('d', d); el('a-route-dash').setAttribute('d', d);
+      var end = pts[pts.length - 1]; el('a-dest-g').setAttribute('transform', 'translate(' + end.x + ',' + end.y + ')');
+      var rp = pointAtT(pts, t); el('a-robot-g').setAttribute('transform', 'translate(' + rp.x + ',' + rp.y + ')');
+    }
+    function tick(ts) { if (!last) last = ts; var dt = (ts - last) / 1000; last = ts; if (moving && !frozen) { t = Math.min(0.95, t + dt * 0.05); } draw(); requestAnimationFrame(tick); }
+    window.__aRoute = {
+      setMoving: function (m) { if (!frozen) moving = !!m; },
+      freezeNearDest: function () { frozen = true; moving = false; t = 0.88; draw(); }, // 도착 마커 바로 앞 정지
+      reset: function () { frozen = false; moving = false; t = 0.30; draw(); }
+    };
+    if (document.querySelector('.map')) { draw(); requestAnimationFrame(tick); }
+  })();
+
   // ── 사이드브레이크 ON/OFF → 비디오·미니맵·속도 ────────────────
   // running=false → 비디오·미니맵·pitch/roll 정지 + 속도 0 / true → 모두 재개
   function applyMotion(running) {
@@ -723,6 +767,7 @@
     var cardShown = card && card.classList.contains('show');
     var pState = running ? 'running' : 'paused';
     if (mapImg) mapImg.style.animationPlayState = pState;                 // 미니맵 이동
+    if (window.__aRoute) window.__aRoute.setMoving(!!running);            // 미니맵 로봇 경로 이동
     document.querySelectorAll('#pitchRobot, #rollRobot').forEach(function (s) { s.style.animationPlayState = pState; }); // pitch&roll
     if (running) {
       if (cam && !cardShown) cam.play().catch(function () {});            // 비디오 재생 (S2 횡단 대기 중이면 유지)
@@ -888,6 +933,17 @@
       cam.setAttribute('autoplay', '');
       var tryPlay = function () { if (sc === 2) cam.playbackRate = 0.5; var p = cam.play(); if (p && p.catch) p.catch(function () {}); };
       if (cam.readyState >= 2) tryPlay(); else cam.addEventListener('canplay', tryPlay, { once: true });
+      // S6: 영상 11초 → 로봇을 도착 마커 바로 앞에 고정 + 정지(속도 0.00)
+      if (sc === 6) {
+        var arrived = false;
+        cam.addEventListener('timeupdate', function () {
+          if (arrived || cam.currentTime < 11) return;
+          arrived = true;
+          if (window.__aRoute) window.__aRoute.freezeNearDest();
+          var sp = document.getElementById('st-speed');
+          if (sp) { sp.dataset.drive = '0.00m/s'; sp.textContent = '0.00m/s'; }
+        });
+      }
     }
     window.__neubieScenarioStart = startA;   // flow [시작하기]가 호출
 

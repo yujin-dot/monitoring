@@ -176,7 +176,20 @@
         var s2play = function () { cam.playbackRate = 0.5; if (cam.play) cam.play().catch(function () {}); };
         if (cam.readyState >= 2) s2play(); else cam.addEventListener('canplay', s2play, { once: true });
       }
-      if (sc === 6) cam.loop = false;   // S6 도착영상은 반복하지 않고 끝에서 정지(보기 모드 포함)
+      if (sc === 6) {
+        cam.loop = false;   // S6 도착영상은 반복하지 않고 끝에서 정지(보기 모드 포함)
+        // 영상 11초 시점 → 로봇을 도착 마커(0.75,0.78) 바로 앞에 고정 + 정지(속도 0.00)
+        var s6arrived = false;
+        cam.addEventListener('timeupdate', function () {
+          if (s6arrived || cam.currentTime < 11) return;
+          s6arrived = true;
+          try {
+            state.speed = 0; state.speedTarget = 0;
+            if (state.waypoints && state.waypoints.length) state.wpIdx = state.waypoints.length - 1;
+            state.rx = 0.75; state.ry = 0.70; // 도착 마커 바로 앞
+          } catch (e) {}
+        });
+      }
     }
     window.__neubieScenarioStart = setupScenario; // flow가 [시작하기]에서 호출
 

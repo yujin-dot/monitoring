@@ -89,9 +89,12 @@
     var rows = qs.map(function (q, i) {
       var opts = '';
       for (var v = 1; v <= scale; v++) {
+        var anchor = (v === 1) ? (sus.anchorLow || '전혀 그렇지 않다') : (v === scale) ? (sus.anchorHigh || '매우 그렇다') : '';
         opts += '<label style="display:inline-flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;flex:1;">'
           + '<input type="radio" name="sus' + i + '" value="' + v + '" style="width:24px;height:24px;accent-color:' + PRIMARY + ';">'
-          + '<span style="font-size:13px;color:#9DA3AA;">' + v + '</span></label>';
+          + '<span style="font-size:14px;font-weight:700;color:#E9E9E9;">' + v + '</span>'
+          + '<span style="font-size:11px;font-weight:600;line-height:1.25;text-align:center;min-height:28px;color:' + (anchor ? PRIMARY : 'transparent') + ';">' + (anchor || '·') + '</span>'
+          + '</label>';
       }
       // 1번만 처음에 보이고, 응답하면 다음 문항이 등장
       return '<div class="sus-q" data-q="' + i + '" style="display:' + (i === 0 ? 'block' : 'none') + ';padding:22px 0;border-top:' + (i === 0 ? 'none' : '1px solid #23262B') + ';">'
