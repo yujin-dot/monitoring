@@ -220,7 +220,7 @@
           try {
             var w = state.waypoints; if (!w || !w.length) return;
             var ct = cam.currentTime || 0;
-            var tt = Math.max(0.5, Math.min(1.0, 0.5 + 0.5 * (ct / 11)));
+            var tt = Math.max(0.667, Math.min(1.0, 0.667 + 0.333 * (ct / 11)));  // 2/3 지점→도착
             var pp = ptAt(w, tt);
             state.wpIdx = w.length - 1;                 // 엔진 자동이동 차단(도착 처리)
             state.rx = pp.x; state.ry = pp.y; state.angle = pp.ang;

@@ -772,8 +772,8 @@
     function tick(ts) {
       if (!last) last = ts; var dt = (ts - last) / 1000; last = ts;
       if (mode === 's6' && s6cam) {
-        var ct = s6cam.currentTime || 0;                 // 중간(0.5)→도착(1.0), 영상 11초에 도착 마커 도달
-        t = Math.max(0.5, Math.min(1.0, 0.5 + 0.5 * (ct / 11)));
+        var ct = s6cam.currentTime || 0;                 // 2/3 지점(0.667)→도착(1.0), 영상 11초에 도착 마커 도달
+        t = Math.max(0.667, Math.min(1.0, 0.667 + 0.333 * (ct / 11)));
       } else if (mode === 'idle' && moving) {
         t = Math.min(0.95, t + dt * 0.05);
       }
@@ -782,7 +782,7 @@
     window.__aRoute = {
       setMoving: function (m) { if (mode === 'idle') moving = !!m; },
       setS5Middle: function () { mode = 's5'; moving = false; t = 0.5; draw(); },   // S5: 경로 중간 정지
-      startS6: function (camEl) { mode = 's6'; s6cam = camEl; t = 0.5; draw(); },    // S6: 중간→도착(초록선 따라)
+      startS6: function (camEl) { mode = 's6'; s6cam = camEl; t = 0.667; draw(); },  // S6: 2/3 지점→도착(초록선 따라)
       reset: function () { mode = 'idle'; moving = false; t = 0.30; draw(); }
     };
     if (document.querySelector('.map')) { draw(); requestAnimationFrame(tick); }
