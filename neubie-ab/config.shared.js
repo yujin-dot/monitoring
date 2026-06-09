@@ -122,7 +122,7 @@
     // 빈 시트 + Apps Script doPost 배포 후 그 웹앱 URL을 endpoint에 넣으면 활성화. 그 전엔 no-op.
     sheets: {
       enabled: true,
-      endpoint: 'https://script.google.com/macros/s/AKfycbx0wFTwObLaKenuqsaC0kP4KF0ynfv0M3MdsVOCmBCXN0__lnkFtju7jL5G6KQYOHM/exec'
+      endpoint: 'https://script.google.com/macros/s/AKfycbwl1cLJq9F-xH3vmdtrBXCUY3p4m494yTwdBTxO_Go0jB5cEKS_UHJIRg8FiD59z0JD/exec'
     },
 
     // 시나리오 미지정(?scenario 없음)일 때 카메라에 표시할 기본 피드 영상
