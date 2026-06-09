@@ -126,7 +126,7 @@
 
   /* camera grid — 항상 2:1 유지, 창 크기에 맞춰 가로·세로 중 작은 쪽 기준으로 축소 */
   .cam-wrap { flex: 1; min-height: 0; container-type: size; display: grid; align-items: start; justify-items: center; }
-  .cam-grid { aspect-ratio: 2 / 1; width: min(100%, 200cqh); height: auto; max-height: 100%;
+  .cam-grid { flex: 1 1 auto; width: 100%; min-height: 0;
     display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; border-radius: var(--r-sm); overflow: hidden; }
   .cam { position: relative; background: #1c1f22; overflow: hidden; }
   .cam::before { content: ""; position: absolute; inset: 0;
@@ -151,7 +151,7 @@
   .panel-body::-webkit-scrollbar { width: 8px; }
   .panel-body::-webkit-scrollbar-thumb { background: var(--mono-200); border-radius: 4px; }
   /* 지도 — 패널 하단 고정 (항상 보임) */
-  .panel-map { flex: 0 0 auto; padding: 12px 16px 16px; border-top: 1px solid var(--mono-100); background: var(--mono-50); }
+  .panel-map { flex: 0 0 auto; padding: 12px 16px 14px; border-top: 1px solid var(--mono-100); background: var(--mono-50); }
   .row { display: flex; align-items: center; justify-content: space-between; }
   .row .k { font-size: 14px; color: var(--mono-600); }
   .row .v { font-size: 14px; color: var(--mono-800); font-weight: 600; }
