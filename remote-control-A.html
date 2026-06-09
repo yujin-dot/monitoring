@@ -226,6 +226,12 @@
     background: var(--primary-500); box-shadow: var(--sh-1); display: grid; place-items: center; border: none; color: #fff; }
   .map .compass svg, .map .locate svg { width: 18px; height: 18px; }
   .map .robot { display: none; }   /* 기존 중앙 로봇 점 → 경로 로봇 마커로 대체 */
+  /* 음원 재생바 ('뉴비 지나갈게요' 초록 채움 애니메이션) */
+  .btn.block.voice-playing { position: relative; overflow: hidden; border-color: var(--primary-500); }
+  .btn.block.voice-playing .vp-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--primary-500); animation: vpFillA 2.4s linear forwards; }
+  @keyframes vpFillA { from { width: 0; } to { width: 100%; } }
+  .btn.block.voice-playing .vp-label { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+  .btn.block.voice-playing .vp-label svg { width: 18px; height: 18px; }
 
   /* ── 알림 팝업 (Alerts: Light) — 토스트 오버레이(레이아웃 영향 없음), 같은 위치에 겹쳐 쌓임(최신 앞) ── */
   #alert-stack { position: fixed; top: 85px; left: 72px; right: 320px; height: 44px; z-index: 40; pointer-events: none; }
@@ -536,7 +542,7 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a3 3 0 013 3v6a3 3 0 01-6 0V5a3 3 0 013-3z"/><path d="M5 11a7 7 0 0014 0M12 18v4"/></svg>
           마이크 송출
         </button>
-        <button class="btn block">
+        <button class="btn block" id="a-sound-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
           음원 선택
         </button>
@@ -933,6 +939,8 @@
       cam.setAttribute('autoplay', '');
       var tryPlay = function () { if (sc === 2) cam.playbackRate = 0.5; var p = cam.play(); if (p && p.catch) p.catch(function () {}); };
       if (cam.readyState >= 2) tryPlay(); else cam.addEventListener('canplay', tryPlay, { once: true });
+      // 시나리오 재생 중 10초마다 음원 재생 표시('뉴비 지나갈게요' 초록 채움 → 복귀)
+      if (sc) startVoicePing(cam);
       // S6: 영상 11초 → 로봇을 도착 마커 바로 앞에 고정 + 정지(속도 0.00)
       if (sc === 6) {
         var arrived = false;
@@ -944,6 +952,24 @@
           if (sp) { sp.dataset.drive = '0.00m/s'; sp.textContent = '0.00m/s'; }
         });
       }
+    }
+    // 음원 재생 표시: '음원 선택' 버튼이 '뉴비 지나갈게요' 초록 채움바로 바뀌었다가 복귀
+    function playVoiceA() {
+      var b = document.getElementById('a-sound-btn');
+      if (!b || b.dataset.vp === '1') return;
+      b.dataset.vp = '1';
+      var prev = b.innerHTML;
+      b.classList.add('voice-playing');
+      b.innerHTML = '<span class="vp-fill"></span><span class="vp-label">'
+        + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19 5a9 9 0 010 14M16 8a5 5 0 010 8"/></svg>'
+        + '뉴비 지나갈게요</span>';
+      setTimeout(function () { b.classList.remove('voice-playing'); b.innerHTML = prev; b.dataset.vp = ''; }, 2600);
+    }
+    function startVoicePing(cam) {
+      if (window.__voicePingTimer) return;
+      window.__voicePingTimer = setInterval(function () {
+        if (cam && !cam.paused) playVoiceA();   // 재생 중일 때만
+      }, 10000);
     }
     window.__neubieScenarioStart = startA;   // flow [시작하기]가 호출
 
