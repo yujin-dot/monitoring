@@ -26,6 +26,18 @@ var HEADERS = {
 
 function tabFor(type) { return type === 'participant' ? 'participants' : 'trials'; }
 
+// 시트 헤더 행을 HEADERS 기준으로 보정:
+//  - 빈 시트면 헤더 행 생성
+//  - 이미 헤더가 있고 새 컬럼(HEADERS)이 추가됐으면 헤더 행을 끝에 자동 확장
+function ensureHeaders(sheet, headers) {
+  if (sheet.getLastRow() === 0) { sheet.appendRow(headers); return; }
+  var lastCol = sheet.getLastColumn();
+  var existing = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  if (headers.length > existing.length) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]); // 부족한 컬럼명 채움
+  }
+}
+
 function doPost(e) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000); // 동시 append 충돌 방지
@@ -35,7 +47,7 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName(name) || ss.insertSheet(name);
     var headers = HEADERS[name];
-    if (sheet.getLastRow() === 0) sheet.appendRow(headers);     // 헤더 자동 생성
+    ensureHeaders(sheet, headers);                              // 헤더 생성/확장
     var row = headers.map(function (h) { return data[h] != null ? data[h] : ''; });
     sheet.appendRow(row);
     return ContentService.createTextOutput(JSON.stringify({ ok: true }))
