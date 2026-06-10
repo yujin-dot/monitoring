@@ -118,7 +118,20 @@
     } else if (sc === 3) {
       // T1: 영상 트리거(setup bindVideo). T3: 사이드브레이크 ON
       var sb = q('#btn-sb') || document.querySelector('.seg[data-ctl="sidebrake"] button:last-child');
-      once(sb, function () { done({}); });
+      // 미조작 대비: 영상 재생 후 60초 지나면 타임아웃 기록 + 다음 시나리오 자동 진행
+      var s3to = null;
+      function s3start() {
+        if (s3to) return;
+        s3to = setTimeout(function () {
+          s3to = null;
+          try { if (window.NeubieAB) NeubieAB.markResponse({ success: false, timeout: true }); } catch (e) {}
+          try { if (window.NeubieFlow) NeubieFlow.next(); } catch (e) {} // 완료 오버레이 없이 다음 시나리오로
+        }, 60000);
+      }
+      once(sb, function () { if (s3to) { clearTimeout(s3to); s3to = null; } done({}); });
+      var cam3 = document.getElementById('cam-video');
+      if (cam3) { cam3.addEventListener('play', s3start, { once: true }); if (!cam3.paused) s3start(); }
+      else s3start();
 
     } else if (sc === 6) {
       // T1: 도착 알림 영상(2s, setup bindVideo).
