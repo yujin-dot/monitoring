@@ -972,6 +972,7 @@
       if (sc === 6) {
         if (window.__aRoute) window.__aRoute.startS6(cam);
         cam.loop = false;
+        cam.addEventListener('ended', function () { try { cam.pause(); if (cam.duration) cam.currentTime = cam.duration - 0.05; } catch (e) {} });
         var arrived = false;
         cam.addEventListener('timeupdate', function () {
           if (cam.duration && cam.currentTime >= cam.duration - 0.25) cam.pause(); // 한 번 재생 후 마지막 프레임에서 정지
@@ -979,6 +980,7 @@
           arrived = true;
           var sp = document.getElementById('st-speed');
           if (sp) { sp.dataset.drive = '0.00m/s'; sp.textContent = '0.00m/s'; }
+          if (window.__voicePingTimer) clearInterval(window.__voicePingTimer); // 11초 이후 음성 송출 안 함
         });
       }
     }
