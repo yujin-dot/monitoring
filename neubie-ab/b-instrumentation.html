@@ -46,7 +46,10 @@
       // horizontal(B2, layout-b 아님): 지도 높이는 최대 600px까지만 늘어남(세로 더 길어져도 고정)
       + 'body.ab-testmode:not(.layout-b) #map-section{max-height:600px!important;}'
       // vertical(layout-b): 카메라 영역 padding-left 142px
-      + 'body.layout-b.ab-testmode #camera-section{padding-left:142px!important;}'
+      + 'body.layout-b.ab-testmode #camera-section{padding-left:142px!important;align-self:flex-start!important;}'
+      // B1(세로): 세로 긴 창에서 카메라가 중앙 정렬+레터박스(위아래 여백) 대신, 2:1 크기로 헤더 바로 아래 붙고 하단영역이 카메라 밑에 붙도록
+      + 'body.layout-b.ab-testmode #left-col{flex:0 0 auto!important;align-items:flex-start!important;justify-content:flex-start!important;}'
+      + 'body.layout-b.ab-testmode #camera-feed{flex:none!important;height:auto!important;max-height:calc(100vh - 300px)!important;}'
       // 배터리 에러(저전력) 시 아이콘 전체를 red-400(#FA5952)으로 (테두리/채움/꼭지/번개/% 통일)
       + '.ab-testmode .battery-info.batt-error,.ab-testmode .battery-info.batt-error span{color:#FA5952!important;}'
       + '.ab-testmode .battery-info.batt-error .battery-icon{border-color:#FA5952!important;}'
