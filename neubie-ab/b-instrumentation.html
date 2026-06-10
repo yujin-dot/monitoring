@@ -50,6 +50,10 @@
       // B1(세로): 세로 긴 창에서 카메라가 중앙 정렬+레터박스(위아래 여백) 대신, 2:1 크기로 헤더 바로 아래 붙고 하단영역이 카메라 밑에 붙도록
       + 'body.layout-b.ab-testmode #left-col{flex:0 0 auto!important;align-items:flex-start!important;justify-content:flex-start!important;}'
       + 'body.layout-b.ab-testmode #camera-feed{flex:none!important;height:auto!important;max-height:calc(100vh - 300px)!important;}'
+      // B1: 현위치 버튼 흰 배경 + 아이콘 Mono800, 횡단보도 오버레이(우측) 뜨면 오버레이 왼쪽으로 이동
+      + 'body.layout-b.ab-testmode #loc-btn{background:#fff!important;}'
+      + 'body.layout-b.ab-testmode #loc-btn svg circle,body.layout-b.ab-testmode #loc-btn svg line{stroke:#262626!important;}'
+      + 'body.layout-b.ab-testmode #map-section:has(#xwalk-overlay.show) #loc-btn{right:256px!important;}'
       // 배터리 에러(저전력) 시 아이콘 전체를 red-400(#FA5952)으로 (테두리/채움/꼭지/번개/% 통일)
       + '.ab-testmode .battery-info.batt-error,.ab-testmode .battery-info.batt-error span{color:#FA5952!important;}'
       + '.ab-testmode .battery-info.batt-error .battery-icon{border-color:#FA5952!important;}'
