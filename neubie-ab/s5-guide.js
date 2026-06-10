@@ -156,20 +156,14 @@
     try { if (window.NeubieAB) NeubieAB.markStimulus(); } catch (e) {} // 가이드 표시 = T1
 
     function finish() { if (window.NeubieFlow) NeubieFlow.complete({ success: true }); }
+    var s5done = false;
     function done() {
+      if (s5done) return; s5done = true;                 // 음량 0.2 = 완료 조건(1회)
       try { if (window.NeubieAB) NeubieAB.markResponse({ success: true }); } catch (e) {}
-      g.remove();                              // 음량 가이드 텍스트만 제거
+      g.remove();                                        // 음량 가이드 텍스트 제거
       removeEl('ev-tip'); removeEl('call-tip');
-      // EV 네비게이션 드로워는 유지 — 사용자가 X를 눌러 직접 닫아야 완료
-      var dr = document.getElementById('ev-drawer');
-      var x = document.getElementById('ev-drawer-x');
-      if (dr && x) {
-        var isA = location.pathname.indexOf('remote-control-A') >= 0;
-        var nx = x.cloneNode(true); x.parentNode.replaceChild(nx, x);   // 기존 닫기(→showEV) 핸들러 제거
-        nx.addEventListener('click', function () { closeDrawer(dr, isA); setTimeout(finish, 320); });
-      } else {
-        setTimeout(finish, 800);               // 드로워 없으면(예외) 바로 진행
-      }
+      // 음량을 0.2로 낮추면 완료로 간주 → 3초 뒤 완료 처리. (X 닫기 버튼은 단순 행동, 완료 조건 아님)
+      setTimeout(finish, 3000);
     }
     trackRealVolume(done);
   }
