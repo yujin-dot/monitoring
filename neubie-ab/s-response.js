@@ -54,7 +54,7 @@
   }
   // S1: 3초 카운트다운 후 → 검정 전체화면으로 전환 + 에러 케이스 선택 (정답 여부 미안내)
   function showS1Select() {
-    var opts = ['와이파이', 'GPS', '배터리', '적재함 열림'];
+    var opts = ['와이파이', 'GPS', '배터리', '적재함 열림', '문제 없음', '보지 못함'];
     var ovl = document.createElement('div'); ovl.id = 's1-select';
     ovl.style.cssText = 'position:fixed;inset:0;z-index:90001;background:#0E0F11;display:flex;align-items:center;justify-content:center;'
       + 'font-family:Pretendard,system-ui,sans-serif;';
@@ -80,8 +80,8 @@
 
   function init() {
     if (sc === 1) {
-      // 시작(인트로 닫힘) → T1 + 3초 카운트다운 → 에러 케이스 선택
-      function startS1() { markStim(); runCountdown(3, showS1Select); }
+      // 시작(인트로 닫힘) → T1 + 4초 카운트다운 → 에러 케이스 선택
+      function startS1() { markStim(); runCountdown(4, showS1Select); }
       var ovl = document.getElementById('neubie-flow-ovl');
       if (ovl && window.MutationObserver) {
         var mo = new MutationObserver(function () { if (!document.getElementById('neubie-flow-ovl')) { mo.disconnect(); startS1(); } });
