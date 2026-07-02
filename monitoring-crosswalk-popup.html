@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>모니터링 — 신호등 횡단보도 팝업 목업</title>
+<style>
+  :root{
+    --primary-500:#00BA7C; --tertiary-300:#F8914A; --tertiary-50:#FFEDE4;
+    --red-400:#FA5952; --order-400:#00B2E3;
+    --mono-900:#000; --mono-800:#262626; --mono-700:#434343; --mono-600:#555;
+    --mono-500:#7B7B7B; --mono-400:#9D9D9D; --mono-300:#C4C4C4; --mono-200:#D9D9D9;
+    --mono-100:#E9E9E9; --mono-50:#F5F5F5;
+    --r-sm:12px; --r-xs:8px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:-apple-system,"Apple SD Gothic Neo","Pretendard",sans-serif;
+    background:#33373b; color:var(--mono-800); padding:24px; }
+
+  /* 상단 컨트롤(목업 전용) */
+  .demo-bar{display:flex; align-items:center; gap:12px; margin-bottom:16px; color:#fff;}
+  .demo-bar .seg{display:inline-flex; background:#1c1f22; border-radius:10px; padding:4px; gap:4px;}
+  .demo-bar .seg button{border:none; background:transparent; color:#bfc4c9; font-size:13px; font-weight:700;
+    padding:8px 16px; border-radius:7px; cursor:pointer;}
+  .demo-bar .seg button.on{background:var(--primary-500); color:#fff;}
+  .demo-bar .toggle{margin-left:auto; display:inline-flex; align-items:center; gap:8px; font-size:13px;}
+  .demo-bar .toggle button{border:none; background:var(--tertiary-300); color:#fff; font-weight:700;
+    padding:9px 16px; border-radius:8px; cursor:pointer; font-size:13px;}
+  .demo-hint{font-size:12px; color:#9aa0a6;}
+
+  /* 기기 프레임 */
+  .frame{width:1400px; max-width:100%; height:860px; margin:0 auto; background:#16191c;
+    border-radius:16px; overflow:hidden; position:relative; box-shadow:0 24px 60px rgba(0,0,0,.5);}
+
+  /* 헤더 */
+  .hd{height:60px; display:flex; align-items:center; gap:18px; padding:0 18px; background:#101316; color:#fff;}
+  .hd .robot b{font-size:15px;} .hd .robot div{font-size:11px; color:#9aa0a6; margin-top:2px;}
+  .hd .stat{font-size:12px; color:#cfd3d7; display:flex; align-items:center; gap:5px;}
+  .hd .stat .v{color:#fff; font-weight:700;}
+  .hd .gps{color:var(--tertiary-300); font-weight:700;}
+  .hd .right{margin-left:auto; display:flex; align-items:center; gap:14px; font-size:12px; color:#cfd3d7;}
+  .hd .ic{width:22px; height:22px; display:grid; place-items:center; color:#cfd3d7;}
+  .hd .close{width:34px; height:34px; border-radius:9px; background:var(--red-400); color:#fff; display:grid; place-items:center;}
+
+  /* 카메라 그리드 */
+  .cams{display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(2,1fr); gap:3px; background:#000;}
+  .cam{position:relative; background:linear-gradient(135deg,#2a2e33,#16181b); overflow:hidden;
+    display:grid; place-items:center; color:#4a5057; font-size:12px;}
+  .cam::after{content:attr(data-l); position:absolute; left:8px; top:6px; font-size:10px; color:#6b7178;}
+  .cam.crosswalk{background:linear-gradient(180deg,#3a4046 0%,#23262a 60%,#1a1c1f 100%);}
+  /* 횡단보도 씬(앞쪽 카메라) */
+  .cw-scene{position:absolute; inset:0;}
+  .cw-stripe{position:absolute; left:18%; right:18%; bottom:0; height:46%;
+    background:repeating-linear-gradient(90deg,#e9ecef 0 14px, transparent 14px 30px);
+    transform:perspective(120px) rotateX(55deg); transform-origin:bottom; opacity:.85;}
+  .cw-light{position:absolute; right:14%; top:14%; width:18px; height:42px; background:#15171a; border-radius:5px;
+    display:flex; flex-direction:column; align-items:center; justify-content:space-around; padding:4px 0;}
+  .cw-light i{width:11px; height:11px; border-radius:50%; background:#2c3035;}
+  .cw-light i.red{background:#3a2326;} .cw-light i.green.on{background:#34d27d; box-shadow:0 0 8px #34d27d;}
+  .cam-toolbar{position:absolute; left:50%; bottom:10px; transform:translateX(-50%); display:flex; gap:8px;}
+  .cam-toolbar .chip{background:rgba(20,22,25,.85); color:#dfe3e7; font-size:12px; font-weight:600;
+    padding:7px 12px; border-radius:8px; display:inline-flex; align-items:center; gap:6px;}
+
+  /* 우측/하단 패널 카드 공통 */
+  .card{background:#fff; border-radius:var(--r-sm);}
+  .route{padding:14px;}
+  .route .top{display:flex; align-items:center; justify-content:space-between;}
+  .route .top b{font-size:18px;} .route .top .km{font-size:13px; color:var(--mono-500);}
+  .route .dest{margin-top:10px; background:var(--mono-50); border-radius:8px; padding:10px 12px; font-size:13px; font-weight:600;}
+  .route .steps{display:flex; align-items:center; gap:4px; margin-top:12px;}
+  .route .steps .st{flex:1; text-align:center; font-size:11px; color:var(--mono-500);}
+  .route .steps .dot{width:14px; height:14px; border-radius:50%; background:var(--mono-200); margin:0 auto 4px;}
+  .route .steps .dot.done{background:var(--primary-500);} .route .steps .dot.cur{background:var(--primary-500); box-shadow:0 0 0 3px #B0EAD6;}
+  .route .acts{display:flex; gap:8px; margin-top:14px;}
+  .route .acts button{flex:1; height:38px; border-radius:8px; font-size:13px; font-weight:700; border:1px solid var(--mono-200); background:#fff; cursor:pointer;}
+  .route .acts .go{background:var(--primary-500); color:#fff; border:none;}
+
+  .log{background:#fff; border-radius:var(--r-sm); padding:12px; font-size:12px; color:var(--mono-700); line-height:1.7; overflow:hidden;}
+  .log .ln{display:flex; gap:8px;} .log .ln .t{color:var(--mono-400); flex:0 0 auto;}
+
+  .map{position:relative; border-radius:var(--r-sm); overflow:hidden; background:#dfe7ea;
+    background-image:linear-gradient(0deg,#d4dde1 1px,transparent 1px),linear-gradient(90deg,#d4dde1 1px,transparent 1px);
+    background-size:36px 36px;}
+  .map .badge{position:absolute; left:12px; top:12px; background:var(--red-400); color:#fff; font-size:12px;
+    font-weight:700; padding:5px 10px; border-radius:999px;}
+  .map .ev{position:absolute; left:14px; bottom:14px; width:40px; height:40px; border-radius:8px;
+    background:var(--primary-500); color:#fff; display:grid; place-items:center; font-size:11px; font-weight:700;}
+  .map .route-line{position:absolute; inset:0;}
+
+  .inputbar{background:#fff; border-radius:var(--r-sm); padding:12px 14px; display:flex; align-items:center; gap:10px;}
+  .inputbar .ph{flex:1; color:var(--mono-400); font-size:13px;}
+  .inputbar .ic{color:var(--mono-500);}
+
+  /* 제어 버튼 */
+  .ctrl{background:#fff; border-radius:var(--r-sm); display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:10px 6px; font-size:12px; font-weight:600; color:var(--mono-700); gap:6px; min-height:64px;}
+  .ctrl .st{color:var(--mono-400); font-size:11px;}
+  .ctrl.brake{background:var(--red-400); color:#fff;} .ctrl.brake .st{color:#ffd9d6;}
+
+  /* ───────── 신호등 횡단보도 팝업 (remote-control-A .xwalk 기반) ───────── */
+  .xwalk{position:absolute; width:286px; background:#fff; border:1.5px solid var(--tertiary-300);
+    border-radius:14px; padding:12px; box-shadow:0 12px 30px rgba(0,0,0,.28); z-index:50;
+    animation:popIn .28s cubic-bezier(.2,.8,.25,1); }
+  .xwalk::before{content:""; position:absolute; inset:-1.5px; border-radius:14px; border:1.5px solid var(--tertiary-300);
+    animation:pulse 1.6s ease-out infinite; pointer-events:none;}
+  @keyframes pulse{0%{opacity:.9; transform:scale(1);}100%{opacity:0; transform:scale(1.04);}}
+  @keyframes popIn{from{opacity:0; transform:translateY(8px) scale(.96);}to{opacity:1; transform:none;}}
+  .xwalk .x-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;}
+  .xwalk .x-tag{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
+    color:var(--tertiary-300); background:var(--tertiary-50); padding:4px 9px; border-radius:999px;}
+  .xwalk .x-x{border:none; background:transparent; color:var(--mono-400); cursor:pointer; font-size:16px; line-height:1;}
+  .xwalk .x-media{position:relative; width:100%; aspect-ratio:7/4; border-radius:9px; overflow:hidden;
+    background:linear-gradient(180deg,#3a4046,#1a1c1f);}
+  .xwalk .x-title{font-size:14px; font-weight:700; color:var(--mono-800); margin-top:10px;}
+  .xwalk .x-sub{font-size:12.5px; color:var(--mono-600); margin-top:4px; line-height:1.45;}
+  .xwalk .x-btn{width:100%; height:44px; margin-top:12px; border:none; border-radius:9px;
+    background:var(--tertiary-300); color:#fff; font-size:14px; font-weight:700; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;}
+  .xwalk .x-btn:hover{filter:brightness(.97);}
+  .xwalk.hide{display:none;}
+
+  /* 위치: 시나리오(경로) 카드 영역에 슬라이드 인
+     B = 카드가 우측 상단 → 오른쪽에서 슬라이드 / A = 카드가 좌측 하단 → 왼쪽에서 슬라이드 */
+  .frame[data-layout="B"] .xwalk{right:24px; top:74px; animation:slideInR .34s cubic-bezier(.2,.85,.25,1);}
+  .frame[data-layout="A"] .xwalk{left:24px; bottom:24px; animation:slideInL .34s cubic-bezier(.2,.85,.25,1);}
+  @keyframes slideInR{from{opacity:0; transform:translateX(118%);}to{opacity:1; transform:none;}}
+  @keyframes slideInL{from{opacity:0; transform:translateX(-118%);}to{opacity:1; transform:none;}}
+
+  /* 위치 모드: 우측 하단 고정 (레이아웃 A/B 무관) — 오른쪽에서 슬라이드 인 */
+  .frame.pos-br .xwalk{left:auto; right:24px; top:auto; bottom:24px;
+    animation:slideInR .34s cubic-bezier(.2,.85,.25,1);}
+
+  /* ───────── 레이아웃 B ───────── */
+  .layoutB{display:none; height:calc(100% - 60px);}
+  .frame[data-layout="B"] .layoutB{display:grid;
+    grid-template-columns:1fr 348px; grid-template-rows:1fr 92px; gap:14px; padding:14px;}
+  .layoutB .left{grid-row:1/2; display:flex; flex-direction:column; gap:14px;}
+  .layoutB .cams{flex:1; border-radius:10px; overflow:hidden;}
+  .layoutB .rail{grid-row:1/3; display:flex; flex-direction:column; gap:14px;}
+  .layoutB .log{flex:1;}
+  .layoutB .map{height:200px;}
+  .layoutB .bottombar{grid-column:1/2; grid-row:2/3; display:grid; grid-template-columns:repeat(4,1fr) 1.6fr; gap:10px;}
+
+  /* ───────── 레이아웃 A ───────── */
+  .layoutA{display:none; height:calc(100% - 60px);}
+  .frame[data-layout="A"] .layoutA{display:grid;
+    grid-template-columns:1fr 96px; grid-template-rows:1fr 250px; gap:14px; padding:14px;}
+  .layoutA .cams{grid-column:1/2; grid-row:1/2; border-radius:10px; overflow:hidden;}
+  .layoutA .sidectrl{grid-column:2/3; grid-row:1/2; display:flex; flex-direction:column; gap:10px;}
+  .layoutA .sidectrl .ctrl{flex:1;}
+  .layoutA .bottomleft{grid-column:1/2; grid-row:2/3; display:grid; grid-template-columns:300px 1fr 360px; gap:14px;}
+  .layoutA .map{height:100%;}
+  .layoutA .log{height:100%;}
+  .layoutA .rightcol{display:flex; flex-direction:column; gap:14px;}
+  .layoutA .rightcol .log{flex:1;}
+</style>
+</head>
+<body>
+  <div class="demo-bar">
+    <div class="seg">
+      <button id="btnB" class="on" onclick="setLayout('B')">monitoring_B</button>
+      <button id="btnA" onclick="setLayout('A')">monitoring_A</button>
+    </div>
+    <span class="demo-hint">신호등 횡단보도 팝업 — 카메라를 가리지 않는 위치에 플로팅</span>
+    <div class="toggle">
+      <button id="btnPos" onclick="togglePos()">위치: 시나리오 카드</button>
+      <button onclick="togglePopup()">팝업 표시 / 숨김</button>
+    </div>
+  </div>
+
+  <div class="frame" id="frame" data-layout="B">
+    <!-- 헤더 -->
+    <div class="hd">
+      <div class="robot"><b>11호기 개발용(Product)#2</b><div>NAAKA1-1220902005 · 1호기</div></div>
+      <div class="stat">WIFI <span class="v">100.8ms</span></div>
+      <div class="stat">🔋 <span class="v">100%</span></div>
+      <div class="stat">GPS <span class="gps">9999+</span></div>
+      <div class="stat"><span class="v">0.00</span> KM/H</div>
+      <div class="right">
+        <span>2026. 03. 23 11:30:25</span>
+        <span class="ic">🔔</span><span class="ic">⚙️</span>
+        <span class="close">✕</span>
+      </div>
+    </div>
+
+    <!-- ───────── 레이아웃 B ───────── -->
+    <div class="layoutB">
+      <div class="left">
+        <div class="cams">
+          <div class="cam" data-l="LEFT">CAM</div>
+          <div class="cam" data-l="FRONT-L">CAM</div>
+          <div class="cam" data-l="RIGHT">CAM</div>
+          <div class="cam" data-l="REAR-L">CAM</div>
+          <div class="cam crosswalk" data-l="FRONT ▸ 횡단보도">
+            <div class="cw-scene">
+              <div class="cw-stripe"></div>
+              <div class="cw-light"><i class="red"></i><i class="green on"></i></div>
+            </div>
+            <div class="cam-toolbar">
+              <span class="chip">☀ 밝기 1</span><span class="chip">✦ 화질 중간</span><span class="chip">▦</span>
+            </div>
+          </div>
+          <div class="cam" data-l="REAR-R">CAM</div>
+        </div>
+      </div>
+
+      <div class="rail">
+        <div class="card route">
+          <div class="top"><b>45분 00초</b><span class="km">4.8km</span></div>
+          <div class="dest">래미안리더스원 101동 1008호</div>
+          <div class="steps">
+            <div class="st"><div class="dot done"></div>대기장소</div>
+            <div class="st"><div class="dot done"></div>강남맛집</div>
+            <div class="st"><div class="dot cur"></div>래미안…</div>
+            <div class="st"><div class="dot"></div>대기장소</div>
+          </div>
+          <div class="acts"><button class="go">도착 처리</button><button>다음 단계</button></div>
+        </div>
+        <div class="log">
+          <div class="ln"><span class="t">18:10</span><span>[삼성전자 1호기] 출발지에 도착했어요.</span></div>
+          <div class="ln"><span class="t">18:16</span><span>[삼성전자 1호기] 출발지(파리바게트)에 도착했어요.</span></div>
+          <div class="ln"><span class="t">18:18</span><span>[삼성전자 1호기] 적재함이 열렸습니다.</span></div>
+        </div>
+        <div class="map">
+          <div class="badge">📍 도착</div>
+          <svg class="route-line" viewBox="0 0 348 200" preserveAspectRatio="none">
+            <path d="M40 180 C 120 160, 90 70, 200 80 S 320 40, 320 30" fill="none" stroke="#00BA7C" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+          <div class="ev">EV</div>
+        </div>
+        <div class="inputbar"><span class="ph">문장 입력 송출</span><span class="ic">♪</span><span class="ic">🎙</span></div>
+      </div>
+
+      <div class="bottombar">
+        <div class="ctrl">적재함<span class="st">닫힘</span></div>
+        <div class="ctrl">헤드램프<span class="st">OFF</span></div>
+        <div class="ctrl">게임패드<span class="st">OFF</span></div>
+        <div class="ctrl">자동정지<span class="st">OFF</span></div>
+        <div class="ctrl brake">사이드 브레이크<span class="st">OFF</span></div>
+      </div>
+    </div>
+
+    <!-- ───────── 레이아웃 A ───────── -->
+    <div class="layoutA">
+      <div class="cams">
+        <div class="cam" data-l="LEFT">CAM</div>
+        <div class="cam" data-l="FRONT-L">CAM</div>
+        <div class="cam" data-l="RIGHT">CAM</div>
+        <div class="cam" data-l="REAR-L">CAM</div>
+        <div class="cam crosswalk" data-l="FRONT ▸ 횡단보도">
+          <div class="cw-scene">
+            <div class="cw-stripe"></div>
+            <div class="cw-light"><i class="red"></i><i class="green on"></i></div>
+          </div>
+          <div class="cam-toolbar">
+            <span class="chip">☀ 밝기 1</span><span class="chip">✦ 화질 중간</span><span class="chip">▦</span>
+          </div>
+        </div>
+        <div class="cam" data-l="REAR-R">CAM</div>
+      </div>
+
+      <div class="sidectrl">
+        <div class="ctrl">적재함<span class="st">닫힘</span></div>
+        <div class="ctrl">헤드램프<span class="st">OFF</span></div>
+        <div class="ctrl">게임패드<span class="st">OFF</span></div>
+        <div class="ctrl">자동정지<span class="st">OFF</span></div>
+        <div class="ctrl brake">브레이크<span class="st">OFF</span></div>
+      </div>
+
+      <div class="bottomleft">
+        <div class="card route">
+          <div class="top"><b>45분</b><span class="km">4.8km</span></div>
+          <div class="dest">래미안리더스원 101동 1008호</div>
+          <div class="steps">
+            <div class="st"><div class="dot done"></div>대기</div>
+            <div class="st"><div class="dot done"></div>강남</div>
+            <div class="st"><div class="dot cur"></div>래미안</div>
+            <div class="st"><div class="dot"></div>대기</div>
+          </div>
+          <div class="acts"><button class="go">도착 처리</button><button>다음</button></div>
+        </div>
+        <div class="map">
+          <div class="badge">📍 도착</div>
+          <svg class="route-line" viewBox="0 0 400 250" preserveAspectRatio="none">
+            <path d="M40 220 C 140 200, 100 90, 240 100 S 360 50, 370 40" fill="none" stroke="#00BA7C" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+          <div class="ev">EV</div>
+        </div>
+        <div class="rightcol">
+          <div class="log">
+            <div class="ln"><span class="t">18:10</span><span>[삼성전자 1호기] 출발지에 도착했어요.</span></div>
+            <div class="ln"><span class="t">18:16</span><span>출발지(파리바게트)에 도착했어요.</span></div>
+            <div class="ln"><span class="t">18:18</span><span>적재함이 열렸습니다.</span></div>
+          </div>
+          <div class="inputbar"><span class="ph">문장 입력 송출</span><span class="ic">♪</span><span class="ic">🎙</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ───────── 신호등 횡단보도 팝업 ───────── -->
+    <div class="xwalk" id="xwalk">
+      <div class="x-head">
+        <span class="x-tag">🚦 임무</span>
+        <button class="x-x" onclick="document.getElementById('xwalk').classList.add('hide')">✕</button>
+      </div>
+      <div class="x-media">
+        <div class="cw-scene">
+          <div class="cw-stripe"></div>
+          <div class="cw-light"><i class="red"></i><i class="green on"></i></div>
+        </div>
+      </div>
+      <div class="x-title">신호등 횡단보도</div>
+      <div class="x-sub">영상의 신호를 확인하고 횡단해 주세요.</div>
+      <button class="x-btn">횡단하기 →</button>
+    </div>
+  </div>
+
+<script>
+  function setLayout(l){
+    document.getElementById('frame').dataset.layout = l;
+    document.getElementById('btnA').classList.toggle('on', l==='A');
+    document.getElementById('btnB').classList.toggle('on', l==='B');
+    document.getElementById('xwalk').classList.remove('hide');
+  }
+  function togglePopup(){
+    document.getElementById('xwalk').classList.toggle('hide');
+  }
+  function togglePos(){
+    const f=document.getElementById('frame');
+    const br=f.classList.toggle('pos-br');
+    document.getElementById('btnPos').textContent = br ? '위치: 우측 하단 고정' : '위치: 시나리오 카드';
+    // 위치 변경 시 슬라이드 애니메이션 재생
+    const x=document.getElementById('xwalk'); x.classList.add('hide'); void x.offsetWidth; x.classList.remove('hide');
+  }
+</script>
+</body>
+</html>
