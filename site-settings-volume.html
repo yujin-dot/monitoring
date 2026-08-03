@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>사이트 설정 — 실내/실외 최대 음량</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  :root{
+    --primary:#00BA7C; --primary-50:#E6F8F2; --primary-700:#008458;
+    --order:#00B2E3; --order-50:#E0F4FA;
+    --red:#FA5952; --red-50:#FFEDEB;
+    --mono-900:#111; --mono-800:#262626; --mono-700:#434343; --mono-600:#555;
+    --mono-500:#7B7B7B; --mono-400:#9D9D9D; --mono-300:#C4C4C4; --mono-200:#D9D9D9;
+    --mono-100:#E9E9E9; --mono-50:#F5F5F5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Pretendard,-apple-system,system-ui,sans-serif;color:var(--mono-800);
+    -webkit-font-smoothing:antialiased;background:#2b2e33;min-height:100vh;
+    display:flex;align-items:center;justify-content:center;padding:32px;}
+  button{font-family:inherit;cursor:pointer;}
+
+  .dialog{width:480px;max-width:100%;background:#fff;border-radius:24px;box-shadow:0 30px 80px rgba(0,0,0,.45);
+    padding:32px 28px 24px;position:relative;}
+  .dialog h2{font-size:26px;font-weight:800;color:var(--mono-800);margin-bottom:22px;}
+
+  /* 탭 (세그먼트) */
+  .tabs{display:flex;background:var(--mono-50);border-radius:12px;padding:5px;gap:4px;margin-bottom:26px;}
+  .tabs button{flex:1;height:44px;border:0;background:transparent;border-radius:9px;font-size:15px;font-weight:600;color:var(--mono-500);}
+  .tabs button.active{background:#fff;color:var(--mono-800);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+
+  .sec-label{display:flex;align-items:center;gap:7px;font-size:16px;font-weight:700;color:var(--mono-800);margin-bottom:14px;}
+  .help{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--mono-300);color:var(--mono-400);
+    font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;position:relative;cursor:help;}
+  .help .rd{position:absolute;top:-1px;right:-1px;width:6px;height:6px;border-radius:50%;background:var(--red);}
+  .help:hover .tip{opacity:1;visibility:visible;transform:translateY(0);}
+  .help .tip{position:absolute;left:50%;top:calc(100% + 8px);transform:translateX(-50%) translateY(-4px);
+    width:230px;background:var(--mono-800);color:#fff;font-size:12px;font-weight:400;line-height:1.6;
+    padding:10px 12px;border-radius:8px;opacity:0;visibility:hidden;transition:.15s;z-index:5;text-align:left;}
+  .help .tip::before{content:"";position:absolute;left:50%;top:-5px;transform:translateX(-50%) rotate(45deg);width:10px;height:10px;background:var(--mono-800);}
+
+  /* 차등 설정 체크박스 + 세부 영역 */
+  .opt-check{display:flex;align-items:flex-start;gap:11px;cursor:pointer;padding:13px 15px;border:1px solid var(--mono-200);border-radius:14px;margin-bottom:12px;user-select:none;transition:.15s;}
+  .opt-check .cbox{width:22px;height:22px;flex:0 0 auto;border:2px solid var(--mono-300);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;margin-top:1px;transition:.15s;}
+  .opt-check .cbox svg{width:14px;height:14px;opacity:0;}
+  .opt-check.on{border-color:var(--primary);background:var(--primary-50);}
+  .opt-check.on .cbox{background:var(--primary);border-color:var(--primary);}
+  .opt-check.on .cbox svg{opacity:1;}
+  .opt-check .ct{display:flex;flex-direction:column;}
+  .opt-check .ct .k{display:block;font-size:14px;font-weight:700;color:var(--mono-800);}
+  .opt-check .ct .s{display:block;font-size:11.5px;color:var(--mono-500);margin-top:3px;line-height:1.5;}
+  .opt-check.soon{cursor:default;opacity:.75;}
+  .opt-check.soon .k{color:var(--mono-500);}
+  .opt-check .badge{font-size:10px;font-weight:700;color:var(--mono-500);background:var(--mono-100);border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:middle;}
+
+  /* 값 슬롯 (체크박스 바로 아래, 이 영역만 바뀜) */
+  #volSlot,.nslot{display:flex;flex-direction:column;gap:10px;margin:2px 0 12px;}
+
+  /* 야간 방해금지 시간대 */
+  .time-row{display:flex;align-items:flex-end;gap:12px;background:#fff;border:1px solid var(--mono-100);border-radius:12px;padding:12px 14px;}
+  .time-field{flex:1;display:flex;flex-direction:column;gap:5px;}
+  .time-field .tl{font-size:11px;color:var(--mono-500);font-weight:600;}
+  .time-field .tl .nx{color:var(--primary);font-weight:700;}
+  .time-field input[type=time]{border:1px solid var(--mono-200);border-radius:8px;height:42px;padding:0 12px;font-family:inherit;font-size:16px;font-weight:600;color:var(--mono-800);background:#fff;}
+  .time-sep{color:var(--mono-400);font-weight:700;padding-bottom:11px;}
+  .night-note{font-size:12px;color:var(--mono-600);background:#eef1f7;border-radius:8px;padding:9px 12px;line-height:1.55;}
+
+  /* 실내/실외 최대 음량 */
+  #volBody{display:flex;flex-direction:column;gap:10px;}
+  .vol-rows{display:flex;flex-direction:column;gap:10px;}
+  /* 음량 슬라이더 (버튼 없이) */
+  .vslide{display:flex;align-items:center;gap:14px;background:var(--mono-50);border:1px solid var(--mono-100);border-radius:14px;padding:14px 16px;}
+  .vslide .eico{width:34px;height:34px;flex:0 0 auto;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;}
+  .vslide.indoor .eico{background:var(--order);}
+  .vslide.outdoor .eico{background:var(--primary);}
+  .vslide.all .eico{background:var(--mono-400);}
+  .vslide .eico svg{width:19px;height:19px;}
+  .vslide .sl-main{flex:1;min-width:0;}
+  .vslide .sl-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
+  .vslide .sl-label{font-size:14px;font-weight:700;color:var(--mono-800);}
+  .vslide .sl-val{font-size:14px;font-weight:700;color:var(--primary-700);}
+  .slider{width:100%;height:6px;accent-color:var(--primary);cursor:pointer;margin:2px 0;}
+  .vslide.day .eico{background:var(--tertiary);}
+  .vslide.night .eico{background:#5566a3;}
+
+  /* 2기준 매트릭스 (실내·실외 × 주간·야간) */
+  .matrix{display:grid;grid-template-columns:72px 1fr 1fr;gap:8px;align-items:center;background:var(--mono-50);border:1px solid var(--mono-100);border-radius:14px;padding:14px;}
+  .mx-head{display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--mono-700);}
+  .mx-head svg{width:15px;height:15px;}
+  .mx-head.row{justify-content:flex-start;}
+  .mx-head.indoor svg{color:var(--order);}
+  .mx-head.outdoor svg{color:var(--primary);}
+  .mx-head.dayc svg{color:var(--tertiary);}
+  .mx-head.nightc svg{color:#5566a3;}
+  .mx-cell{background:#fff;border:1px solid var(--mono-100);border-radius:10px;padding:9px 10px 11px;}
+  .mx-val{font-size:13px;font-weight:700;color:var(--primary-700);margin-bottom:7px;text-align:center;}
+  .mx-cell .slider{width:100%;height:6px;accent-color:var(--primary);}
+  .vol-help{font-size:12.5px;color:var(--mono-400);margin-top:10px;line-height:1.6;}
+
+  .divider{height:1px;background:var(--mono-100);margin:22px 0;}
+
+  /* 제한 속도 */
+  .field-label{font-size:16px;font-weight:700;color:var(--mono-800);margin-bottom:12px;}
+  .num-field{height:56px;border:1px solid var(--mono-200);border-radius:12px;display:flex;align-items:center;padding:0 18px;}
+  .num-field input{flex:1;border:0;outline:0;font-family:inherit;font-size:18px;font-weight:600;color:var(--mono-800);background:transparent;}
+  .num-field .unit{font-size:16px;color:var(--mono-500);}
+  .hint{font-size:13px;color:var(--mono-400);margin-top:10px;}
+
+  /* 토글 */
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;}
+  .toggle-row + .toggle-row{margin-top:12px;}
+  .toggle-row .tl{font-size:16px;font-weight:700;color:var(--mono-800);}
+  .switch{width:56px;height:32px;border-radius:16px;background:var(--mono-200);border:0;position:relative;transition:.2s;flex:0 0 auto;}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .switch.on{background:var(--primary);}
+  .switch.on::after{left:27px;}
+
+  /* 푸터 */
+  .footer{display:flex;gap:12px;margin-top:26px;}
+  .footer button{flex:1;height:60px;border-radius:14px;font-size:17px;font-weight:700;border:0;}
+  .btn-cancel{background:var(--mono-50);color:var(--mono-700);}
+  .btn-cancel:hover{background:var(--mono-100);}
+  .btn-save{background:var(--primary);color:#fff;}
+  .btn-save:hover{background:var(--primary-700);}
+</style>
+</head>
+<body>
+  <div class="dialog">
+    <h2>사이트 설정</h2>
+
+    <div class="tabs">
+      <button class="active">일반 설정</button>
+      <button>일반 탐지</button>
+      <button>특수 탐지</button>
+    </div>
+
+    <!-- 로봇 최대 음량 -->
+    <div class="sec-label">
+      로봇 최대 음량 설정
+      <span class="help">?<span class="rd"></span>
+        <span class="tip">로봇 재생 음량의 <b>상한</b>을 설정합니다. 실내·실외를 다르게 설정하면 환경을 자동 감지해 각 상한으로 제한합니다.</span>
+      </span>
+    </div>
+
+    <!-- 실내·실외 (체크박스 고정 · 아래 값 슬롯만 변경) -->
+    <label class="opt-check" id="chkEnv">
+      <span class="cbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+      <span class="ct"><span class="k">실내·실외에 따라 다르게 설정</span><span class="s">환경(실내/실외)을 감지해 각각의 최대 음량을 적용합니다.</span></span>
+    </label>
+    <div id="volSlot"></div>
+
+    <label class="opt-check" id="chkNight">
+      <span class="cbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+      <span class="ct"><span class="k">야간 방해금지</span><span class="s">지정한 시간대에는 음량을 더 낮게 제한합니다 (겹치면 더 낮은 값 적용).</span></span>
+    </label>
+    <div id="nightDetail"></div>
+    <div class="vol-help" id="volHelp"></div>
+
+    <div class="divider"></div>
+
+    <!-- 제한 속도 -->
+    <div class="field-label">로봇 제한 속도</div>
+    <div class="num-field"><input value="1.6" /><span class="unit">m/s</span></div>
+    <div class="hint">최소 0.1m/s에서 최대 2.0m/s까지 설정 가능합니다.</div>
+
+    <div class="divider"></div>
+
+    <!-- 토글 -->
+    <div class="toggle-row"><span class="tl">VL 사용</span><button class="switch" aria-label="VL 사용"></button></div>
+    <div class="toggle-row"><span class="tl">Edge Mode</span><button class="switch" aria-label="Edge Mode"></button></div>
+
+    <!-- 푸터 -->
+    <div class="footer">
+      <button class="btn-cancel">취소</button>
+      <button class="btn-save">저장</button>
+    </div>
+  </div>
+
+<script>
+  const MIN=0, MAX=10;
+  const ICO={
+    vol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 010 7M19 5a9 9 0 010 14"/></svg>',
+    home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10l9-7 9 7v10a1 1 0 01-1 1H4a1 1 0 01-1-1z"/><path d="M9 21v-6h6v6"/></svg>',
+    sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M19 5l-1.5 1.5M6.5 17.5L5 19"/></svg>',
+    pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z"/></svg>',
+  };
+
+  // 차등 기준 상태: env=실내·실외 (단순). 주간·야간은 매트릭스로 곱하지 않고 별도 '야간 음량' 기능으로 분리 예정
+  const crit={ env:false, night:false };
+  const V={ all:2, in:1, out:3, night:0 };
+
+  function slideRow(key,cls,label,icon){
+    const v=V[key];
+    return `<div class="vslide ${cls}">
+      <span class="eico">${icon}</span>
+      <div class="sl-main">
+        <div class="sl-top"><span class="sl-label">${label}</span><span class="sl-val" data-for="${key}">음량 ${v}</span></div>
+        <input type="range" class="slider" data-key="${key}" min="${MIN}" max="${MAX}" value="${v}">
+      </div>
+    </div>`;
+  }
+  function wireSliders(scope){
+    scope.querySelectorAll(".slider").forEach(sl=>{
+      sl.oninput=()=>{ const k=sl.dataset.key; V[k]=+sl.value; const lab=scope.querySelector(`[data-for="${k}"]`); if(lab) lab.textContent="음량 "+V[k]; };
+    });
+  }
+  function renderVol(){
+    const slot=document.getElementById("volSlot");
+    slot.innerHTML = crit.env
+      ? slideRow("in","indoor","실내",ICO.home)+slideRow("out","outdoor","실외",ICO.pin)
+      : slideRow("all","all","최대 음량",ICO.vol);
+    wireSliders(slot);
+    document.getElementById("volHelp").textContent = (crit.env
+      ? "실내·실외를 자동 감지해 각 환경의 최대 음량으로 제한합니다."
+      : "모든 환경에서 동일한 최대 음량으로 제한합니다.") + " (음량 0 ~ 10)";
+  }
+
+  function renderNight(){
+    const d=document.getElementById("nightDetail");
+    if(!crit.night){ d.innerHTML=""; return; }
+    d.innerHTML=`<div class="nslot">
+      <div class="time-row">
+        <div class="time-field"><span class="tl">시작</span><input type="time" value="22:00"></div>
+        <span class="time-sep">~</span>
+        <div class="time-field"><span class="tl">종료 <span class="nx">익일</span></span><input type="time" value="07:00"></div>
+      </div>
+      ${slideRow("night","night","야간 최대 음량",ICO.moon)}
+      <div class="night-note">이 시간대에는 위에서 설정한 값과 비교해 <b>더 낮은 음량</b>이 적용됩니다. (예: 실외 음량 3이라도 야간이면 야간 값으로 제한)</div>
+    </div>`;
+    wireSliders(d);
+  }
+
+  const chkEnv=document.getElementById("chkEnv");
+  chkEnv.onclick=()=>{ crit.env=!crit.env; chkEnv.classList.toggle("on",crit.env); renderVol(); };
+  const chkNight=document.getElementById("chkNight");
+  chkNight.onclick=()=>{ crit.night=!crit.night; chkNight.classList.toggle("on",crit.night); renderNight(); };
+  renderNight();
+
+  // 기타 토글(VL/Edge)
+  document.querySelectorAll(".toggle-row .switch").forEach(s=> s.onclick=()=>s.classList.toggle("on"));
+  // 탭
+  document.querySelectorAll(".tabs button").forEach(b=> b.onclick=()=>{
+    document.querySelectorAll(".tabs button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+  });
+
+  renderVol();
+</script>
+</body>
+</html>

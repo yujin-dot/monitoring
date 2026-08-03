@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>문서 배달 — 다목적지 발송 (모바일)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  /* ===== Neubility 토큰 (Figma Squad-2026 문서배달) ===== */
+  :root{
+    --primary:#00BA7C; --primary-100:#B0EAD6; --primary-50:#E6F8F2; --primary-700:#008458;
+    --secondary:#426CFF; --secondary-50:#ECF0FF;
+    --order:#00B2E3; --order-50:#E0F4FA;
+    --tertiary:#F8914A; --tertiary-50:#FFEDE4;
+    --red:#FA5952; --red-50:#FFEDEB;
+    --mono-900:#000; --mono-800:#262626; --mono-700:#434343; --mono-600:#555;
+    --mono-500:#7B7B7B; --mono-400:#9D9D9D; --mono-300:#C4C4C4; --mono-200:#D9D9D9;
+    --mono-100:#E9E9E9; --mono-50:#F5F5F5;
+    --error:#C83532;
+    --r-s:8px; --r-m:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:Pretendard,-apple-system,"system-ui","Segoe UI",Roboto,sans-serif;
+    color:var(--mono-800); background:#3a3d42;
+    -webkit-font-smoothing:antialiased;
+    display:flex;align-items:flex-start;justify-content:center;gap:24px;
+    padding:28px;min-height:100vh;
+  }
+  button{font-family:inherit;cursor:pointer;}
+
+  /* 임베드 모드(시나리오 오버뷰): 사이드 숨기고 폰만 */
+  body.embed{padding:0;gap:0;align-items:center;background:#eceef1;}
+  body.embed .demo-aside{display:none;}
+
+  /* 데모 안내 사이드 */
+  .demo-aside{width:230px;flex:0 0 230px;color:#e8eaee;padding-top:8px;position:sticky;top:28px;}
+  .demo-aside h1{font-size:18px;font-weight:700;margin-bottom:6px;color:#fff;}
+  .demo-aside p{font-size:12px;line-height:1.7;color:#b6bac1;margin-bottom:16px;}
+  .demo-steps{display:flex;flex-direction:column;gap:4px;}
+  .demo-steps button{text-align:left;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#cfd3da;
+    font-size:12.5px;padding:10px 12px;border-radius:8px;display:flex;align-items:center;gap:9px;transition:.15s;}
+  .demo-steps button:hover{background:rgba(255,255,255,.12);}
+  .demo-steps button.active{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600;}
+  .demo-steps button .n{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:0 0 auto;}
+  .demo-steps button.active .n{background:rgba(255,255,255,.25);}
+  .demo-note{margin-top:16px;font-size:11px;color:#9297a0;line-height:1.7;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;}
+  .demo-note b{color:var(--primary);}
+
+  /* ===== 폰 프레임 ===== */
+  .phone{
+    width:375px;flex:0 0 375px;height:812px;background:#fff;border-radius:40px;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);position:relative;overflow:hidden;
+    border:10px solid #111;
+  }
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;background:#fff;}
+  .screen.show{display:flex;}
+
+  /* 상태바 */
+  .statusbar{height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:14px;font-weight:600;color:var(--mono-800);z-index:20;position:relative;background:#fff;}
+  .statusbar .time{letter-spacing:.5px;}
+  .statusbar .icons{display:flex;align-items:center;gap:6px;}
+  .statusbar .icons svg{width:16px;height:16px;}
+
+  /* 상단 탭 */
+  .toptab{height:52px;flex:0 0 52px;display:flex;border-bottom:1px solid var(--mono-100);background:#fff;z-index:15;}
+  .toptab button{flex:1;border:0;background:transparent;font-size:16px;font-weight:600;color:var(--mono-300);position:relative;}
+  .toptab button.active{color:var(--mono-800);}
+  .toptab button.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--mono-800);}
+
+  /* 헤더 */
+  .navhead{height:52px;flex:0 0 52px;display:flex;align-items:center;padding:0 12px;background:#fff;border-bottom:1px solid var(--mono-100);z-index:15;position:relative;}
+  .navhead .htitle{position:absolute;left:0;right:0;text-align:center;font-size:16px;font-weight:700;color:var(--mono-800);pointer-events:none;}
+
+  /* ===== 지도 (상단 고정) ===== */
+  .map{flex:0 0 168px;position:relative;overflow:hidden;
+    background:
+      linear-gradient(0deg, rgba(0,0,0,.025) 1px, transparent 1px) 0 0/34px 34px,
+      linear-gradient(90deg, rgba(0,0,0,.025) 1px, transparent 1px) 0 0/34px 34px,
+      #e9ece7;}
+  .map .blk{position:absolute;background:#f1f3ee;border-radius:3px;}
+  .map .rd{position:absolute;background:#fff;}
+  .route-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;}
+  .mpin{position:absolute;transform:translate(-50%,-100%);z-index:3;display:flex;flex-direction:column;align-items:center;transition:.2s;}
+  .mpin .pbody{width:28px;height:28px;border-radius:50% 50% 50% 0;background:var(--mono-300);transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 5px rgba(0,0,0,.25);border:2px solid #fff;}
+  .mpin .pbody .lab{transform:rotate(45deg);color:#fff;font-size:11px;font-weight:700;}
+  .mpin.dest .pbody{background:var(--primary);}
+  .mpin.origin .pbody{background:var(--mono-800);}
+  .mpin.ghost .pbody{background:#fff;border:2px solid var(--mono-300);width:20px;height:20px;}
+  .mpin.ghost .pbody .lab{color:var(--mono-400);}
+  .mpin .cap{margin-top:2px;font-size:9px;font-weight:700;color:var(--mono-700);background:rgba(255,255,255,.9);border-radius:5px;padding:1px 4px;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.12);}
+  .mpin.ghost .cap{color:var(--mono-400);font-weight:500;}
+
+  /* ===== 요청 본문 (스크롤) ===== */
+  .reqbody{flex:1;overflow-y:auto;background:var(--mono-50);border-radius:16px 16px 0 0;margin-top:-14px;position:relative;z-index:5;padding:14px 16px 8px;}
+  .reqbody::-webkit-scrollbar{width:0;}
+  .reqbody .grab{width:40px;height:4px;border-radius:2px;background:var(--mono-200);margin:0 auto 12px;}
+  .req-title{font-size:19px;font-weight:700;color:var(--mono-800);margin-bottom:4px;}
+  .req-sub{font-size:12px;color:var(--mono-500);margin-bottom:14px;line-height:1.5;}
+
+  /* ===== 지점 카드 (위치 + 정보 통합) ===== */
+  .stop{background:#fff;border:1px solid var(--mono-200);border-radius:var(--r-m);margin-bottom:10px;position:relative;overflow:hidden;}
+  .stop.open{border-color:var(--primary-100);box-shadow:0 2px 10px rgba(0,0,0,.05);}
+  .stop-head{display:flex;align-items:flex-start;gap:11px;padding:14px 14px;cursor:pointer;}
+  .stop-head .mk{width:26px;height:26px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;margin-top:1px;}
+  .stop.origin .stop-head .mk{background:#fff;border:2.5px solid var(--mono-800);}
+  .stop.origin .stop-head .mk::after{content:"";width:7px;height:7px;border-radius:50%;background:var(--mono-800);}
+  .stop.dest .stop-head .mk{background:var(--primary);}
+  .stop-head .hi{flex:1;min-width:0;}
+  .stop-head .hi .lb{font-size:12px;font-weight:700;color:var(--mono-500);}
+  .stop.dest .stop-head .hi .lb{color:var(--primary);}
+  .stop-head .hi .nm{font-size:16px;font-weight:700;color:var(--mono-800);margin-top:2px;line-height:1.3;}
+  .stop-head .hi .nm.empty{color:var(--mono-400);font-weight:500;}
+  .stop-head .hi .ad{font-size:12px;color:var(--mono-400);margin-top:2px;}
+  .stop-head .hi .summ{font-size:12.5px;color:var(--mono-600);margin-top:7px;display:flex;align-items:center;gap:5px;}
+  .stop-head .hi .summ svg{width:13px;height:13px;color:var(--mono-400);flex:0 0 auto;}
+  .stop-head .hi .summ .need{color:var(--tertiary);font-weight:600;}
+  .stop.open .stop-head .hi .summ{display:none;}
+  .stop-head .ctrls{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+  .stop-head .ctrls button{width:34px;height:34px;border-radius:50%;border:1px solid var(--mono-200);background:#fff;display:flex;align-items:center;justify-content:center;color:var(--mono-500);}
+  .stop-head .ctrls .minus:active{background:var(--red-50);color:var(--red);border-color:var(--red);}
+  .stop-head .ctrls .move{cursor:grab;touch-action:none;}
+  .stop-head .ctrls .move:active{cursor:grabbing;}
+  .stop-head .ctrls button svg{width:18px;height:18px;}
+  .stop-head .chev{width:22px;height:22px;flex:0 0 auto;color:var(--mono-400);display:flex;align-items:center;justify-content:center;transition:.2s;margin-top:3px;}
+  .stop.open .stop-head .chev{transform:rotate(180deg);}
+  .stop.dragging{opacity:.6;background:var(--primary-50);}
+
+  .stop-form{display:none;padding:0 14px 16px;}
+  .stop.open .stop-form{display:block;}
+  .change-loc{width:100%;height:44px;border:1px solid var(--mono-200);border-radius:var(--r-s);background:var(--mono-50);display:flex;align-items:center;gap:8px;padding:0 12px;font-size:14px;font-weight:600;color:var(--mono-700);margin-bottom:14px;}
+  .change-loc .pin{color:var(--primary);display:flex;flex:0 0 auto;}
+  .change-loc .pin svg{width:16px;height:16px;}
+  .change-loc .chev{margin-left:auto;color:var(--mono-400);flex:0 0 auto;}
+  .form-label{font-size:13px;font-weight:700;color:var(--mono-700);margin:0 0 10px;display:flex;align-items:center;gap:6px;}
+  .form-label .tag{font-size:11px;font-weight:600;color:#fff;border-radius:999px;padding:2px 8px;}
+  .form-label .tag.send{background:var(--mono-700);}
+  .form-label .tag.recv{background:var(--primary);}
+  .tinput{width:100%;height:48px;border:1px solid var(--mono-200);border-radius:var(--r-s);padding:0 14px;font-family:inherit;font-size:15px;color:var(--mono-800);outline:none;background:#fff;margin-bottom:10px;}
+  .tinput::placeholder{color:var(--mono-400);}
+  .tinput:focus{border-color:var(--mono-800);}
+  .ck{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mono-600);justify-content:flex-end;margin-bottom:4px;}
+  .ck .box{width:20px;height:20px;border-radius:5px;border:1.5px solid var(--mono-300);display:flex;align-items:center;justify-content:center;color:#fff;}
+  .ck.on .box{background:var(--primary);border-color:var(--primary);}
+  .ck .box svg{width:13px;height:13px;opacity:0;}
+  .ck.on .box svg{opacity:1;}
+  .tarea{width:100%;min-height:76px;border:1px solid var(--mono-200);border-radius:var(--r-s);padding:12px 14px;font-family:inherit;font-size:14px;color:var(--mono-800);outline:none;resize:none;margin-top:8px;}
+  .tarea::placeholder{color:var(--mono-400);}
+
+  .add-dest{width:100%;height:50px;border:1px dashed var(--mono-300);background:#fff;border-radius:var(--r-m);color:var(--secondary);font-size:15px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;margin:2px 0 4px;}
+  .add-dest:active{background:var(--secondary-50);}
+  .add-dest:disabled{color:var(--mono-300);border-color:var(--mono-200);}
+  .add-dest svg{width:18px;height:18px;}
+
+  /* CTA */
+  .cta-fixed{padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--mono-100);flex:0 0 auto;z-index:10;}
+  .boxbtn{width:100%;height:56px;border:0;border-radius:var(--r-s);background:var(--primary);color:#fff;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .boxbtn:disabled{background:var(--mono-200);color:#fff;}
+  .boxbtn.active:active{background:var(--primary-700);}
+
+  /* 하단 네비 */
+  .botnav{height:56px;flex:0 0 56px;display:flex;border-top:1px solid var(--mono-100);background:#fff;z-index:15;}
+  .botnav button{flex:1;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--mono-400);font-size:11px;}
+  .botnav button.active{color:var(--primary);}
+  .botnav button svg{width:22px;height:22px;}
+  .indicator{height:20px;flex:0 0 20px;display:flex;align-items:center;justify-content:center;background:#fff;}
+  .indicator::after{content:"";width:134px;height:5px;border-radius:3px;background:var(--mono-800);}
+
+  /* ===== 이용내역 ===== */
+  .history{flex:1;overflow-y:auto;background:var(--mono-50);padding:12px 16px 20px;}
+  .hcard{background:#fff;border-radius:var(--r-m);box-shadow:0 1px 4px rgba(0,0,0,.06);padding:18px 16px;margin-bottom:12px;}
+  .hcard .htop{display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;}
+  .hcard .htop .who{font-size:16px;font-weight:700;color:var(--mono-800);}
+  .hcard .htop .ph{font-size:13px;color:var(--mono-500);margin-top:3px;}
+  .hcard .htop .tag{margin-left:auto;font-size:12px;font-weight:700;border-radius:999px;padding:5px 11px;flex:0 0 auto;white-space:nowrap;}
+  .tag.driving{color:var(--primary);background:var(--primary-50);}
+  .tag.cash{color:var(--tertiary);background:var(--tertiary-50);}
+  .tag.reserve{color:var(--mono-500);background:var(--mono-100);}
+  .hroute{display:flex;align-items:flex-start;position:relative;margin-bottom:14px;}
+  .hroute .hn{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;min-width:0;}
+  .hroute .hn .d{width:20px;height:20px;border-radius:50%;background:var(--mono-200);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2;}
+  .hroute .hn.done .d,.hroute .hn.on .d{background:var(--primary);}
+  .hroute .hn.origin .d{background:var(--mono-800);}
+  .hroute .hn .t1{margin-top:6px;font-size:11px;font-weight:600;color:var(--mono-800);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .hroute .hn .t2{margin-top:1px;font-size:10px;color:var(--mono-400);}
+  .hroute .hn.pending .t1{color:var(--mono-400);font-weight:500;}
+  .hroute .hn::before{content:"";position:absolute;top:9px;left:-50%;width:100%;height:3px;background:var(--mono-200);z-index:1;}
+  .hroute .hn:first-child::before{display:none;}
+  .hroute .hn.done::before,.hroute .hn.on::before{background:var(--primary);}
+  .hbtns{display:flex;gap:8px;}
+  .hbtns .sb{flex:1;height:38px;border-radius:var(--r-s);border:1px solid var(--mono-200);background:#fff;font-size:13px;font-weight:600;color:var(--mono-700);}
+  .hbtns .sb.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .hbtns .sb.ghost{color:var(--mono-500);}
+
+  /* 완료 오버레이 */
+  .done-ov{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:50;display:none;align-items:flex-end;}
+  .done-ov.show{display:flex;animation:fade .2s;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .done-card{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:28px 20px calc(20px + env(safe-area-inset-bottom));text-align:center;animation:up .3s ease;}
+  @keyframes up{from{transform:translateY(40px)}to{transform:translateY(0)}}
+  .done-card .ic{width:64px;height:64px;border-radius:50%;background:var(--primary-50);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+  .done-card .ic svg{width:32px;height:32px;color:var(--primary);}
+  .done-card h3{font-size:20px;font-weight:700;color:var(--mono-800);}
+  .done-card p{font-size:14px;color:var(--mono-500);margin-top:8px;line-height:1.6;}
+  .done-card .go{margin-top:22px;}
+
+  /* 피커 */
+  .picker{position:absolute;inset:0;background:rgba(0,0,0,.4);z-index:60;display:none;align-items:flex-end;}
+  .picker.show{display:flex;animation:fade .2s;}
+  .picker .pk{background:#fff;width:100%;border-radius:20px 20px 0 0;max-height:72%;display:flex;flex-direction:column;animation:up .25s ease;}
+  .picker .pk .pkh{padding:16px 20px;font-size:16px;font-weight:700;border-bottom:1px solid var(--mono-100);display:flex;align-items:center;}
+  .picker .pk .pkh .x{margin-left:auto;border:0;background:transparent;color:var(--mono-500);}
+  .picker .pk .pkl{overflow-y:auto;padding:6px 0 calc(8px + env(safe-area-inset-bottom));}
+  .picker .pk .pkl .opt{padding:14px 20px;display:flex;align-items:center;gap:10px;}
+  .picker .pk .pkl .opt:active{background:var(--mono-50);}
+  .picker .pk .pkl .opt .oi{min-width:0;}
+  .picker .pk .pkl .opt .oi .on{font-size:16px;color:var(--mono-800);font-weight:500;}
+  .picker .pk .pkl .opt.sel .oi .on{color:var(--primary);font-weight:700;}
+  .picker .pk .pkl .opt .oi .oa{font-size:12px;color:var(--mono-400);margin-top:2px;}
+  .picker .pk .pkl .opt.disabled .oi .on{color:var(--mono-300);}
+  .picker .pk .pkl .opt.disabled .oi .oa{color:var(--mono-200);}
+  .picker .pk .pkl .opt .used{margin-left:auto;font-size:11px;color:var(--mono-400);background:var(--mono-50);border-radius:999px;padding:3px 8px;flex:0 0 auto;}
+  .picker .pk .pkl .opt .chk{margin-left:auto;color:var(--primary);display:none;flex:0 0 auto;}
+  .picker .pk .pkl .opt.sel .chk{display:block;}
+</style>
+</head>
+<body>
+
+<aside class="demo-aside">
+  <h1>문서 배달 · 다목적지</h1>
+  <p>현장 사용자(발송자)가 보는 모바일 웹 화면입니다. 한 번의 요청으로 <b style="color:#fff">여러 목적지</b>에 순차 배달을 보냅니다.</p>
+  <div class="demo-steps" id="demoSteps">
+    <button data-s="1"><span class="n">1</span> 배달 요청 (위치+받는분 통합)</button>
+    <button data-s="2"><span class="n">2</span> 이용내역 (다구간)</button>
+  </div>
+  <div class="demo-note">
+    한 화면에서 <b>출발지·보내는 분</b>과 <b>도착지별 받는 분</b>을 함께 입력합니다. 각 지점 카드를 펼치면 위치·연락처를 그 자리에서 입력하고, 도착지는 <b>추가·삭제·↕순서변경</b>됩니다.
+  </div>
+</aside>
+
+<!-- ===== 폰 ===== -->
+<div class="phone" id="phone">
+
+  <!-- 1) 배달 요청 (위치 + 정보 통합) -->
+  <div class="screen show" id="s1">
+    <div class="statusbar"><span class="time">9:41</span><span class="icons">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 20h3v-6H2v6zm5 0h3V8H7v12zm5 0h3V4h-3v16zm5 0h3v-9h-3v9z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 2.7 6 0 9l12 15L24 9c-2.7-3-7-5-12-5z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 10v4" stroke-linecap="round"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor"/></svg>
+    </span></div>
+    <div class="toptab"><button>음식 배달</button><button class="active">문서 배달</button></div>
+    <div class="map" id="map1">
+      <div class="blk" style="left:6%;top:8%;width:120px;height:70px;"></div>
+      <div class="blk" style="left:52%;top:6%;width:120px;height:80px;"></div>
+      <div class="blk" style="left:10%;top:56%;width:110px;height:70px;"></div>
+      <div class="blk" style="left:58%;top:54%;width:120px;height:70px;"></div>
+      <div class="rd" style="left:0;top:44%;width:100%;height:12px;"></div>
+      <div class="rd" style="left:44%;top:0;width:12px;height:100%;"></div>
+      <svg class="route-svg" id="route1" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+      <div id="pins1"></div>
+    </div>
+    <div class="reqbody">
+      <div class="grab"></div>
+      <div class="req-title">배달 요청</div>
+      <div class="req-sub">출발지·보내는 분과 도착지별 받는 분을 한 번에 입력하세요. 각 카드를 눌러 펼칩니다.</div>
+      <div id="stopList"></div>
+      <button class="add-dest" id="addDest" onclick="openPicker('dest','new')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+        도착지 추가
+      </button>
+      <div style="height:6px"></div>
+    </div>
+    <div class="cta-fixed">
+      <button class="boxbtn" id="cta1" disabled onclick="openDone()">문서 배달 보내기</button>
+    </div>
+    <div class="indicator"></div>
+  </div>
+
+  <!-- 2) 이용내역 -->
+  <div class="screen" id="s2">
+    <div class="statusbar"><span class="time">9:41</span><span class="icons">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 20h3v-6H2v6zm5 0h3V8H7v12zm5 0h3V4h-3v16zm5 0h3v-9h-3v9z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 2.7 6 0 9l12 15L24 9c-2.7-3-7-5-12-5z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 10v4" stroke-linecap="round"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor"/></svg>
+    </span></div>
+    <div class="navhead"><div class="htitle">이용내역</div></div>
+    <div class="toptab" style="height:46px;flex-basis:46px;"><button style="font-size:15px">음식 배달</button><button class="active" style="font-size:15px">문서 배달</button></div>
+    <div class="history" id="history"></div>
+    <div class="botnav">
+      <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10l9-7 9 7v9a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 21V12h6v9"/></svg>홈</button>
+      <button class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>이용내역</button>
+      <button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>마이페이지</button>
+    </div>
+    <div class="indicator"></div>
+  </div>
+
+  <!-- 완료 오버레이 -->
+  <div class="done-ov" id="doneOv">
+    <div class="done-card">
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>
+      <h3 id="doneTitle">배달 요청 완료</h3>
+      <p id="doneBody">뉴비가 출발지로 이동합니다.<br/>스테이션에서 검체를 적재해 주세요.</p>
+      <div class="go"><button class="boxbtn active" onclick="closeDone()">이용내역에서 확인</button></div>
+    </div>
+  </div>
+
+  <!-- 선택 피커 -->
+  <div class="picker" id="picker">
+    <div class="pk">
+      <div class="pkh"><span id="pkTitle">선택</span><button class="x" onclick="closePicker()"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>
+      <div class="pkl" id="pkList"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ===== 데이터 ===== */
+  const ORIGINS = [
+    { name:"기술캠퍼스 스테이션", addr:"서울 광진구 군자로10길 30" },
+    { name:"뉴비 홀 스테이션",   addr:"서울 성동구 서울숲2길 32-14" },
+    { name:"연구동 로비 스테이션", addr:"서울 성동구 성수이로 51" },
+  ];
+  const POIS = [
+    { name:"연구센터 A동", addr:"서울 성동구 왕십리로 115", x:56, y:22 },
+    { name:"연구센터 B동", addr:"서울 성동구 성수일로 77",  x:74, y:40 },
+    { name:"연구센터 C동", addr:"서울 광진구 아차산로 200", x:24, y:30 },
+    { name:"연구센터 D동", addr:"서울 성동구 뚝섬로 293",   x:20, y:64 },
+    { name:"뉴비 홀",       addr:"서울 성동구 서울숲2길 32", x:62, y:64 },
+    { name:"기술 캠퍼스",   addr:"서울 성동구 성수이로 51",  x:44, y:48 },
+  ];
+  const ORIGIN_XY = { x:16, y:82 };
+
+  // 통합 상태: 출발(보내는 분) + 도착지 배열(각각 받는 분)
+  let ST = {
+    origin: { poi:"기술캠퍼스 스테이션", sname:"김간호", sphone:"010-1234-5678", useMine:true },
+    dests: [
+      { poi:"연구센터 A동", rname:"홍길동", rphone:"010-2222-3333", rmsg:"", useMine:false },
+      { poi:"연구센터 B동", rname:"이몽룡", rphone:"010-4444-5555", rmsg:"", useMine:false },
+    ],
+    openId: "d0",   // 처음 펼쳐둘 카드
+  };
+
+  const IC = {
+    chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>',
+    minus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14"/></svg>',
+    move:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>',
+    pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    person:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0112 0v1"/></svg>',
+  };
+  const poiOf = (n) => POIS.find(p=>p.name===n) || ORIGINS.find(o=>o.name===n);
+  const xyOf  = (n) => POIS.find(p=>p.name===n) || {x:ORIGIN_XY.x,y:ORIGIN_XY.y};
+
+  /* ===== 화면 전환 ===== */
+  function go(n){
+    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("show"));
+    document.getElementById("s"+n).classList.add("show");
+    document.querySelectorAll("#demoSteps button").forEach(b=>b.classList.toggle("active", +b.dataset.s===n));
+    if(n===2) renderHistory();
+  }
+  document.querySelectorAll("#demoSteps button").forEach(b=> b.onclick=()=>go(+b.dataset.s));
+
+  /* ===== 선택 피커 ===== */
+  let pickerCtx=null;
+  function openPicker(ctx, idx){
+    pickerCtx={ctx, idx};
+    const list=document.getElementById("pkList");
+    const title=document.getElementById("pkTitle");
+    if(ctx==="origin"){
+      title.textContent="출발 스테이션 선택";
+      list.innerHTML=ORIGINS.map(o=>`<div class="opt ${o.name===ST.origin.poi?'sel':''}" data-v="${o.name}">
+        <div class="oi"><div class="on">${o.name}</div><div class="oa">${o.addr}</div></div><span class="chk">${IC.check}</span></div>`).join("");
+    } else {
+      title.textContent = idx==="new" ? "도착지 추가" : "도착지 변경";
+      const cur = idx==="new" ? null : ST.dests[idx].poi;
+      const used = ST.dests.filter((d,i)=> i!==idx).map(d=>d.poi);
+      list.innerHTML=POIS.map(p=>{
+        const dis=used.includes(p.name);
+        return `<div class="opt ${p.name===cur?'sel':''} ${dis?'disabled':''}" data-v="${dis?'':p.name}">
+          <div class="oi"><div class="on">${p.name}</div><div class="oa">${p.addr}</div></div>
+          ${dis?'<span class="used">추가됨</span>':`<span class="chk">${IC.check}</span>`}</div>`;
+      }).join("");
+    }
+    list.querySelectorAll(".opt").forEach(op=>{ op.onclick=()=>{ const v=op.dataset.v; if(!v) return; pick(v); }; });
+    document.getElementById("picker").classList.add("show");
+  }
+  function closePicker(){ document.getElementById("picker").classList.remove("show"); }
+  function pick(v){
+    if(pickerCtx.ctx==="origin"){ ST.origin.poi=v; ST.openId="o"; }
+    else if(pickerCtx.idx==="new"){ ST.dests.push({poi:v, rname:"", rphone:"", rmsg:"", useMine:false}); ST.openId="d"+(ST.dests.length-1); }
+    else { ST.dests[pickerCtx.idx].poi=v; ST.openId="d"+pickerCtx.idx; }
+    closePicker(); renderStops();
+  }
+
+  /* ===== 통합 지점 카드 ===== */
+  function removeDest(idx){
+    ST.dests.splice(idx,1);
+    if(ST.openId==="d"+idx) ST.openId=null;
+    renderStops();
+  }
+  function toggleStop(id){ ST.openId = (ST.openId===id? null : id); renderStops(); }
+
+  function renderStops(){
+    const host=document.getElementById("stopList"); host.innerHTML="";
+
+    // 출발 카드
+    const o=poiOf(ST.origin.poi);
+    const oOpen = ST.openId==="o";
+    const oCard=document.createElement("div");
+    oCard.className="stop origin"+(oOpen?" open":"");
+    oCard.innerHTML=`
+      <div class="stop-head">
+        <span class="mk"></span>
+        <div class="hi">
+          <div class="lb">출발</div>
+          <div class="nm">${o.name}</div>
+          <div class="summ">${IC.person}<span>보내는 분 <b>${ST.origin.sname||'미입력'}</b> · ${ST.origin.sphone||''}</span></div>
+        </div>
+        <span class="chev">${IC.chev}</span>
+      </div>
+      <div class="stop-form">
+        <button class="change-loc" data-act="loc-o"><span class="pin">${IC.pin}</span>출발지 변경<span class="chev">${IC.chev}</span></button>
+        <div class="form-label"><span class="tag send">보내는 분</span></div>
+        <input class="tinput" data-f="sname" placeholder="이름" value="${ST.origin.sname}" />
+        <input class="tinput" data-f="sphone" placeholder="휴대전화번호" value="${ST.origin.sphone}" />
+        <div class="ck ${ST.origin.useMine?'on':''}" data-act="mine-o"><span class="box">${IC.check}</span>내 연락처로 입력</div>
+      </div>`;
+    // 헤더 토글 (chev/헤더 클릭)
+    oCard.querySelector(".stop-head").onclick=()=>toggleStop("o");
+    oCard.querySelector('[data-act="loc-o"]').onclick=(e)=>{ e.stopPropagation(); openPicker("origin"); };
+    oCard.querySelector('[data-act="mine-o"]').onclick=(e)=>{ e.stopPropagation(); ST.origin.useMine=!ST.origin.useMine; e.currentTarget.classList.toggle("on",ST.origin.useMine); };
+    oCard.querySelector('[data-f="sname"]').oninput=(e)=>{ ST.origin.sname=e.target.value; };
+    oCard.querySelector('[data-f="sphone"]').oninput=(e)=>{ ST.origin.sphone=e.target.value; };
+    host.appendChild(oCard);
+
+    // 도착 카드들
+    ST.dests.forEach((d,idx)=>{
+      const p=poiOf(d.poi);
+      const id="d"+idx;
+      const open = ST.openId===id;
+      const card=document.createElement("div");
+      card.className="stop dest"+(open?" open":"");
+      const recvSumm = d.rname
+        ? `${IC.person}<span>받는 분 <b>${d.rname}</b> · ${d.rphone||''}</span>`
+        : `${IC.person}<span class="need">받는 분 정보 입력 필요</span>`;
+      card.innerHTML=`
+        <div class="stop-head">
+          <span class="mk">${idx+1}</span>
+          <div class="hi">
+            <div class="lb">도착 ${idx+1}</div>
+            <div class="nm">${p?p.name:d.poi}</div>
+            <div class="summ">${recvSumm}</div>
+          </div>
+          <div class="ctrls">
+            <button class="minus" title="삭제">${IC.minus}</button>
+            <button class="move" title="순서 이동">${IC.move}</button>
+          </div>
+          <span class="chev">${IC.chev}</span>
+        </div>
+        <div class="stop-form">
+          <button class="change-loc" data-act="loc"><span class="pin">${IC.pin}</span>도착지 변경<span class="chev">${IC.chev}</span></button>
+          <div class="form-label"><span class="tag recv">받는 분</span></div>
+          <input class="tinput" data-f="rname" placeholder="이름" value="${d.rname}" />
+          <input class="tinput" data-f="rphone" placeholder="휴대전화번호" value="${d.rphone}" />
+          <div class="ck ${d.useMine?'on':''}" data-act="mine"><span class="box">${IC.check}</span>내 연락처로 입력</div>
+          <textarea class="tarea" data-f="rmsg" placeholder="전달 시 남길 메시지 (선택)">${d.rmsg}</textarea>
+        </div>`;
+      // 헤더 토글 (컨트롤 제외)
+      card.querySelector(".stop-head").onclick=(e)=>{ if(e.target.closest(".ctrls")) return; toggleStop(id); };
+      card.querySelector(".minus").onclick=(e)=>{ e.stopPropagation(); removeDest(idx); };
+      card.querySelector(".move").addEventListener("pointerdown",(e)=>dragStart(e,idx));
+      card.querySelector('[data-act="loc"]').onclick=(e)=>{ e.stopPropagation(); openPicker("dest",idx); };
+      card.querySelector('[data-act="mine"]').onclick=(e)=>{ e.stopPropagation(); d.useMine=!d.useMine; e.currentTarget.classList.toggle("on",d.useMine); };
+      card.querySelector('[data-f="rname"]').oninput=(e)=>{ d.rname=e.target.value; };
+      card.querySelector('[data-f="rphone"]').oninput=(e)=>{ d.rphone=e.target.value; };
+      card.querySelector('[data-f="rmsg"]').oninput=(e)=>{ d.rmsg=e.target.value; };
+      if(drag && drag.idx===idx) card.classList.add("dragging");
+      host.appendChild(card);
+    });
+
+    // 상태 반영
+    const n=ST.dests.length;
+    document.getElementById("addDest").disabled = n>=POIS.length;
+    const cta=document.getElementById("cta1");
+    cta.disabled = n<1;
+    cta.classList.toggle("active", n>=1);
+    cta.textContent = n>=1 ? `문서 배달 보내기 (${n}곳)` : "도착지를 추가하세요";
+    drawRoute();
+  }
+
+  /* ===== 드래그 순서 변경 ===== */
+  let drag=null;
+  function dragStart(e, idx){
+    e.preventDefault();
+    drag={ idx };
+    renderStops();
+    window.addEventListener("pointermove", dragMove);
+    window.addEventListener("pointerup", dragEnd);
+  }
+  function dragMove(e){
+    if(!drag) return;
+    const rows=[...document.querySelectorAll("#stopList .stop.dest")];
+    if(!rows.length) return;
+    let target=0;
+    rows.forEach(r=>{ const rc=r.getBoundingClientRect(); if(e.clientY > rc.top+rc.height/2) target++; });
+    target=Math.max(0, Math.min(ST.dests.length-1, target));
+    if(target!==drag.idx){
+      const [m]=ST.dests.splice(drag.idx,1);
+      ST.dests.splice(target,0,m);
+      drag.idx=target;
+      renderStops();
+    }
+  }
+  function dragEnd(){
+    window.removeEventListener("pointermove", dragMove);
+    window.removeEventListener("pointerup", dragEnd);
+    drag=null; renderStops();
+  }
+
+  /* ===== 지도 경로 ===== */
+  function drawRoute(){
+    const svg=document.getElementById("route1");
+    const pins=document.getElementById("pins1");
+    svg.innerHTML=""; pins.innerHTML="";
+    const filled=ST.dests.map(d=>d.poi);
+    if(filled.length){
+      const pts=[`${ORIGIN_XY.x},${ORIGIN_XY.y}`, ...filled.map(d=>{const p=xyOf(d);return `${p.x},${p.y}`;})].join(" ");
+      svg.innerHTML=`<polyline points="${pts}" fill="none" stroke="#00BA7C" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>`;
+    }
+    pins.appendChild(mpin(ORIGIN_XY.x, ORIGIN_XY.y, {origin:true, lab:"S", cap:"출발"}));
+    filled.forEach((d,i)=>{ const p=xyOf(d); pins.appendChild(mpin(p.x,p.y,{dest:true,lab:i+1,cap:d})); });
+    POIS.filter(p=>!filled.includes(p.name)).forEach(p=> pins.appendChild(mpin(p.x,p.y,{ghost:true,lab:"",cap:p.name})));
+  }
+  function mpin(x,y,o){
+    const el=document.createElement("div");
+    el.className="mpin "+(o.origin?"origin":o.dest?"dest":"ghost");
+    el.style.left=x+"%"; el.style.top=y+"%";
+    el.innerHTML=`<div class="pbody"><span class="lab">${o.lab}</span></div>${o.cap?`<span class="cap">${o.cap}</span>`:""}`;
+    return el;
+  }
+
+  /* ===== 완료 ===== */
+  function openDone(){
+    const n=ST.dests.length;
+    document.getElementById("doneTitle").textContent=`${n}곳 배달 요청 완료`;
+    document.getElementById("doneBody").innerHTML=`뉴비가 순서대로 <b style="color:var(--primary)">${n}개 목적지</b>를 방문합니다.<br/>스테이션에서 검체를 적재해 주세요.`;
+    document.getElementById("doneOv").classList.add("show");
+  }
+  function closeDone(){ document.getElementById("doneOv").classList.remove("show"); go(2); }
+
+  /* ===== 이용내역 ===== */
+  function renderHistory(){
+    const filled=ST.dests.map(d=>d.poi);
+    const first=ST.dests[0];
+    const host=document.getElementById("history"); host.innerHTML="";
+    host.appendChild(historyCard({
+      who: `${(first&&first.rname)||'홍길동'} 외 ${Math.max(filled.length-1,0)}명께 배달`,
+      phone: (first&&first.rphone)||'010-2222-3333',
+      tag: {t:"배달중", c:"driving"},
+      dests: filled.length?filled:["연구센터 A동"],
+      active: 1,
+      buttons:["배달취소","적재함 열기"],
+    }));
+    host.appendChild(historyCard({
+      who:"이몽룡 님께 배달", phone:"010-4444-5555",
+      tag:{t:"전달 예약중", c:"reserve"},
+      dests:["연구센터 B동"], active:0, buttons:["전달예약취소"],
+    }));
+  }
+  function historyCard(o){
+    const card=document.createElement("div"); card.className="hcard";
+    const stops=[{n:"뉴비 출발",kind:"origin"}, ...o.dests.map(d=>({n:d,kind:"dest"}))];
+    const routeHTML=stops.map((s,i)=>{
+      let cls = s.kind==="origin"?"origin done":(i<=o.active?(i===o.active?"on":"done"):"pending");
+      const mk = s.kind==="origin"?"S":i;
+      const eta = s.kind==="origin"?"오후 3:30":`3:${45+(i-1)*7} 예정`;
+      return `<div class="hn ${cls}"><span class="d">${mk}</span><span class="t1">${s.n}</span><span class="t2">${eta}</span></div>`;
+    }).join("");
+    const btns=o.buttons.map((b,i)=>`<button class="sb ${i===o.buttons.length-1&&o.tag.c==='driving'?'primary':''} ${b.includes('취소')?'ghost':''}">${b}</button>`).join("");
+    card.innerHTML=`
+      <div class="htop">
+        <div><div class="who">${o.who}</div><div class="ph">${o.phone}</div></div>
+        <span class="tag ${o.tag.c}">${o.tag.t}</span>
+      </div>
+      <div class="hroute">${routeHTML}</div>
+      <div class="hbtns">${btns}</div>`;
+    return card;
+  }
+
+  /* ===== init ===== */
+  renderStops();
+
+  /* URL 파라미터 — 시나리오 오버뷰 임베드용
+     ?embed=1 → 데모 사이드 숨김 / ?screen=history → 이용내역 화면 */
+  (function(){
+    const q=new URLSearchParams(location.search);
+    if(q.get("embed")) document.body.classList.add("embed");
+    if(q.get("screen")==="history") go(2);
+  })();
+</script>
+</body>
+</html>

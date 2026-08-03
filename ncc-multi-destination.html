@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>다목적지 배송 — NCC 임무 설정 · 원격제어 통합 데모</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  /* ===== Neubility 디자인 토큰 ===== */
+  :root{
+    --primary:#00BA7C; --primary-700:#008458; --primary-800:#006644; --primary-50:#E6F8F2;
+    --secondary:#426CFF; --secondary-50:#ECF0FF;
+    --order:#00B2E3; --order-50:#E0F4FA;
+    --tertiary:#F8914A; --tertiary-50:#FFEDE4;
+    --red:#FA5952; --red-50:#FFEDEB;
+    --mono-900:#000; --mono-800:#262626; --mono-700:#434343; --mono-600:#555;
+    --mono-500:#7B7B7B; --mono-400:#9D9D9D; --mono-300:#C4C4C4; --mono-200:#D9D9D9;
+    --mono-100:#E9E9E9; --mono-50:#F5F5F5;
+    --error:#C83532; --warning:#EF8A43;
+    --sh-1:0 2px 6px rgba(0,0,0,.12); --sh-2:0 4px 16px rgba(0,0,0,.12);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:Pretendard,-apple-system,"system-ui","Segoe UI",Roboto,sans-serif;
+    color:var(--mono-800); background:var(--mono-50);
+    -webkit-font-smoothing:antialiased; overflow:hidden;
+  }
+  button{font-family:inherit;cursor:pointer;}
+  .app{display:flex;height:100vh;overflow:hidden;}
+
+  /* ===== 좌측 사이드바 ===== */
+  .sidebar{
+    width:56px;flex:0 0 56px;background:#fff;border-right:1px solid var(--mono-100);
+    display:flex;flex-direction:column;align-items:center;padding:12px 0;z-index:30;
+  }
+  .sidebar .collapse{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mono-500);margin-bottom:12px;}
+  .sidebar .nav-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--mono-400);margin:6px 0;position:relative;transition:.15s;border:0;background:transparent;}
+  .sidebar .nav-icon:hover{background:var(--mono-50);color:var(--mono-700);}
+  .sidebar .nav-icon.active{background:var(--primary);color:#fff;}
+  .sidebar .nav-icon .dot{position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--red);}
+  .sidebar .spacer{flex:1;}
+
+  /* ===== 메인 (지도) ===== */
+  .stage{flex:1;display:flex;min-width:0;position:relative;}
+  .map{
+    flex:1;position:relative;overflow:hidden;
+    background:
+      linear-gradient(0deg, rgba(0,0,0,.02) 1px, transparent 1px) 0 0/40px 40px,
+      linear-gradient(90deg, rgba(0,0,0,.02) 1px, transparent 1px) 0 0/40px 40px,
+      #e8ebe6;
+  }
+  .map .block{position:absolute;background:#f2f3ef;border-radius:3px;}
+  .map .road{position:absolute;background:#fff;}
+  .map-topbar{position:absolute;top:16px;left:16px;right:16px;display:flex;justify-content:space-between;pointer-events:none;z-index:5;}
+  .map-topbar > *{pointer-events:auto;}
+  .region-box{background:#fff;border-radius:10px;box-shadow:var(--sh-1);padding:10px 14px;display:flex;align-items:center;gap:10px;min-width:230px;cursor:pointer;}
+  .region-box .name{font-size:14px;font-weight:600;color:var(--mono-800);}
+  .region-box .desc{font-size:11px;color:var(--mono-500);margin-top:2px;}
+  .region-box .chev{margin-left:auto;color:var(--mono-500);}
+  .map-controls{display:flex;flex-direction:column;align-items:flex-end;gap:8px;}
+  .seg{background:#fff;border-radius:6px;box-shadow:var(--sh-1);padding:3px;display:flex;gap:2px;}
+  .seg button{border:0;background:transparent;font-size:11px;color:var(--mono-600);padding:4px 12px;border-radius:4px;}
+  .seg button.active{background:var(--mono-800);color:#fff;}
+  .map-icon-btn{width:34px;height:34px;background:#fff;border-radius:8px;box-shadow:var(--sh-1);border:0;display:flex;align-items:center;justify-content:center;color:var(--mono-700);}
+
+  /* 경로 SVG */
+  .route-svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2;}
+
+  /* 지도 핀 */
+  .pin{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;z-index:4;transition:.25s;}
+  .pin .bubble{background:#fff;border:2px solid var(--c,var(--primary));border-radius:14px;padding:3px 9px;font-size:11px;font-weight:700;color:var(--mono-800);box-shadow:0 2px 6px rgba(0,0,0,.2);white-space:nowrap;display:flex;align-items:center;gap:5px;}
+  .pin .bubble .ord{width:16px;height:16px;border-radius:50%;background:var(--c,var(--primary));color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .pin .tip{width:10px;height:10px;background:#fff;border-right:2px solid var(--c,var(--primary));border-bottom:2px solid var(--c,var(--primary));transform:rotate(45deg);margin-top:-6px;}
+  .pin.station .bubble{background:var(--mono-800);border-color:var(--mono-800);color:#fff;}
+  .pin.station .tip{background:var(--mono-800);border-color:var(--mono-800);}
+  .pin.ghost{opacity:.4;}
+  .pin.ghost .bubble{border-style:dashed;}
+
+  /* 달리는 로봇 도트 */
+  .robot-dot{position:absolute;transform:translate(-50%,-50%);z-index:6;transition:left .9s linear, top .9s linear;}
+  .robot-dot .core{width:18px;height:18px;border-radius:50%;background:var(--primary);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+  .robot-dot .ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid var(--primary);opacity:.5;animation:pulse 1.6s ease-out infinite;}
+  @keyframes pulse{0%{transform:scale(.7);opacity:.6;}100%{transform:scale(1.7);opacity:0;}}
+
+  /* ===== 우측 패널 ===== */
+  .panel{width:340px;flex:0 0 340px;background:var(--mono-50);height:100%;position:relative;border-left:1px solid var(--mono-100);}
+  .panel-inner{padding:16px;display:flex;flex-direction:column;height:100%;}
+  .panel-title{font-size:20px;font-weight:700;color:var(--mono-800);}
+  .panel-sub{font-size:12px;color:var(--mono-500);margin-top:4px;line-height:1.5;}
+  .robot-name{margin-top:16px;font-size:14px;font-weight:600;color:var(--mono-700);background:#fff;border:1px solid var(--mono-100);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:8px;}
+  .robot-name .badge{margin-left:auto;font-size:11px;font-weight:600;color:var(--order);background:var(--order-50);border-radius:999px;padding:3px 9px;}
+
+  .flow-body{flex:1;overflow-y:auto;margin-top:16px;padding-right:4px;display:flex;flex-direction:column;gap:20px;}
+  .flow-body::-webkit-scrollbar{width:6px;}
+  .flow-body::-webkit-scrollbar-thumb{background:var(--mono-200);border-radius:3px;}
+
+  .field label{font-size:13px;font-weight:500;color:var(--mono-700);display:flex;align-items:center;gap:3px;margin-bottom:8px;}
+  .field label .req{color:var(--error);}
+  .field label .hint{margin-left:auto;font-size:11px;font-weight:400;color:var(--mono-400);}
+
+  /* 커스텀 셀렉트 */
+  .select{position:relative;}
+  .select .box{height:44px;border:1px solid var(--mono-200);border-radius:8px;background:#fff;display:flex;align-items:center;padding:0 12px;cursor:pointer;font-size:14px;font-weight:500;color:var(--mono-800);}
+  .select .box.placeholder{color:var(--mono-400);font-weight:400;}
+  .select .box .lead{margin-right:8px;color:var(--mono-500);flex:0 0 auto;display:flex;}
+  .select .box .chev{margin-left:auto;color:var(--mono-500);transition:.2s;flex:0 0 auto;}
+  .select.open .box{border-color:var(--mono-800);}
+  .select.open .box .chev{transform:rotate(180deg);}
+  .select .menu{position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1px solid var(--mono-200);border-radius:8px;box-shadow:var(--sh-2);padding:6px;z-index:20;display:none;max-height:240px;overflow-y:auto;}
+  .select.open .menu{display:block;}
+  .select .menu .opt{padding:9px 10px;border-radius:6px;font-size:14px;color:var(--mono-700);display:flex;align-items:center;gap:8px;}
+  .select .menu .opt:hover{background:var(--mono-50);}
+  .select .menu .opt.sel{color:var(--primary);font-weight:600;}
+  .select .menu .opt.disabled{color:var(--mono-300);pointer-events:none;}
+  .select .menu .opt .dotc{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+
+  /* 목적지 다중 (순서 + CRUD) */
+  .dest-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .dest-head .lab{font-size:13px;font-weight:500;color:var(--mono-700);display:flex;align-items:center;gap:6px;}
+  .dest-head .lab .req{color:var(--error);}
+  .dest-head .cnt{font-size:11px;font-weight:700;color:var(--primary);background:var(--primary-50);border-radius:999px;padding:3px 9px;}
+  .dest-list{display:flex;flex-direction:column;gap:8px;}
+  .dest-row{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--mono-200);border-radius:8px;padding:6px 8px 6px 6px;transition:.15s;}
+  .dest-row.filled{border-color:var(--primary-200,#8ADFC3);}
+  .dest-row .ord{width:24px;height:24px;flex:0 0 auto;border-radius:50%;background:var(--primary);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .dest-row .sel-wrap{flex:1;min-width:0;}
+  .dest-row .sel-wrap .box{height:36px;border:0;padding:0 6px;font-size:14px;}
+  .dest-row .sel-wrap .box .chev{color:var(--mono-400);}
+  .dest-row .reorder{display:flex;flex-direction:column;gap:1px;flex:0 0 auto;}
+  .dest-row .reorder button{width:22px;height:16px;border:0;background:transparent;color:var(--mono-400);display:flex;align-items:center;justify-content:center;border-radius:4px;padding:0;}
+  .dest-row .reorder button:hover:not(:disabled){background:var(--mono-100);color:var(--mono-700);}
+  .dest-row .reorder button:disabled{opacity:.25;cursor:default;}
+  .dest-row .del{width:28px;height:28px;flex:0 0 auto;border:0;background:transparent;color:var(--mono-400);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+  .dest-row .del:hover{background:var(--red-50);color:var(--red);}
+  .add-dest{margin-top:10px;width:100%;height:42px;border:1px dashed var(--mono-300);background:#fff;border-radius:8px;color:var(--primary);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .add-dest:hover{border-color:var(--primary);background:var(--primary-50);}
+  .add-dest:disabled{color:var(--mono-300);border-color:var(--mono-200);background:var(--mono-50);cursor:default;}
+  .add-dest svg{width:15px;height:15px;}
+
+  /* 경로 요약 카드 */
+  .route-card{background:#fff;border:1px solid var(--mono-100);border-radius:10px;padding:14px;}
+  .route-card .rc-head{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--mono-700);}
+  .route-card .rc-head .est{margin-left:auto;font-size:12px;font-weight:400;color:var(--mono-500);}
+  .route-card .rc-body{margin-top:12px;display:flex;flex-direction:column;}
+  .rc-stop{display:flex;align-items:center;gap:10px;position:relative;padding:5px 0;}
+  .rc-stop .mk{width:20px;height:20px;flex:0 0 auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;z-index:1;}
+  .rc-stop.origin .mk{background:var(--mono-800);}
+  .rc-stop.dest .mk{background:var(--primary);}
+  .rc-stop.ret .mk{background:var(--mono-400);}
+  .rc-stop .nm{font-size:13px;color:var(--mono-800);font-weight:500;}
+  .rc-stop .tg{margin-left:auto;font-size:11px;color:var(--mono-500);}
+  .rc-stop::before{content:"";position:absolute;left:9px;top:-8px;height:16px;width:2px;background:var(--mono-200);}
+  .rc-stop:first-child::before{display:none;}
+
+  .panel-foot{padding-top:14px;margin-top:14px;border-top:1px solid var(--mono-100);display:flex;gap:10px;}
+  .panel-foot button{flex:1;height:46px;border-radius:8px;font-size:15px;font-weight:600;}
+  .btn-cancel{background:#fff;border:1px solid var(--mono-300);color:var(--mono-800);}
+  .btn-cancel:hover{background:var(--mono-50);}
+  .btn-submit{background:var(--primary);border:0;color:#fff;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .btn-submit:hover{background:var(--primary-700);}
+  .btn-submit:disabled{background:var(--mono-200);color:#fff;cursor:not-allowed;}
+
+  /* ===== 원격제어 화면 ===== */
+  .remote{position:absolute;inset:0;background:var(--mono-50);display:none;flex-direction:column;z-index:40;}
+  .remote.show{display:flex;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;}to{opacity:1;}}
+  .r-header{padding:12px 20px 10px;border-bottom:1px solid var(--mono-100);background:#fff;}
+  .r-header-top{display:flex;align-items:center;gap:12px;}
+  .r-header-top .back{width:36px;height:36px;border-radius:8px;border:1px solid var(--mono-200);background:#fff;color:var(--mono-700);display:flex;align-items:center;justify-content:center;}
+  .r-header-top .title{font-size:22px;font-weight:700;color:var(--mono-800);}
+  .r-header-top .code{font-size:13px;color:var(--mono-500);}
+  .r-header-top .multi-badge{font-size:12px;font-weight:600;color:var(--primary);background:var(--primary-50);border-radius:999px;padding:4px 11px;display:flex;align-items:center;gap:5px;}
+  .r-header-top .actions{margin-left:auto;display:flex;gap:8px;}
+  .r-header-stats{margin-top:8px;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--mono-600);}
+  .r-header-stats .vsep{width:1px;height:11px;background:var(--mono-200);}
+  .r-header-stats b{font-weight:600;color:var(--mono-800);}
+
+  .btn{height:36px;padding:0 14px;border-radius:8px;border:1px solid var(--mono-200);background:#fff;color:var(--mono-800);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px;}
+  .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .btn.danger{background:var(--red);border-color:var(--red);color:#fff;}
+  .btn svg{width:15px;height:15px;}
+
+  .r-content{flex:1;display:flex;min-height:0;}
+  .r-center{flex:1;display:flex;flex-direction:column;padding:14px 20px;gap:12px;min-width:0;overflow:hidden;}
+
+  /* 다구간 스테퍼 */
+  .stepper{background:#fff;border:1px solid var(--mono-200);border-radius:8px;overflow:hidden;}
+  .stepper .stepper-top{display:flex;align-items:stretch;min-height:56px;}
+  .stepper .close{flex:0 0 48px;display:grid;place-items:center;border:0;border-right:1px solid var(--mono-100);background:#fff;color:var(--mono-500);}
+  .stepper .close svg{width:18px;height:18px;}
+  .stepper .steps{flex:1;display:flex;align-items:stretch;overflow-x:auto;}
+  .stepper .steps::-webkit-scrollbar{height:0;}
+  .step{flex:1;min-width:170px;display:flex;align-items:center;gap:10px;padding:8px 16px;position:relative;}
+  .step + .step::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:1px;background:var(--mono-100);}
+  .step .sdot{width:22px;height:22px;border-radius:50%;flex:0 0 auto;background:var(--mono-100);color:var(--mono-400);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;}
+  .step.active .sdot{background:var(--primary);color:#fff;box-shadow:0 0 0 4px var(--primary-50);}
+  .step.done .sdot{background:var(--primary-50);color:var(--primary);}
+  .step .stext{min-width:0;}
+  .step .l1{font-size:11px;color:var(--mono-500);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .step.active .l1{color:var(--primary);font-weight:600;}
+  .step .l2{font-size:13px;color:var(--mono-800);font-weight:600;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .step.done .l2,.step.pending .l2{color:var(--mono-400);font-weight:400;}
+  .step .chk{margin-left:auto;color:var(--primary);flex:0 0 auto;display:none;}
+  .step.done .chk{display:block;}
+  /* 진행 게이지 */
+  .stepper .progress-track{height:4px;background:var(--mono-100);}
+  .stepper .progress-fill{height:100%;background:var(--primary);width:0;transition:width .9s linear;}
+
+  .r-toolbar{display:flex;align-items:center;gap:10px;}
+  .r-toolbar .pill{height:34px;padding:0 12px;border:1px solid var(--mono-200);border-radius:8px;background:#fff;display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--mono-700);font-weight:500;}
+  .r-toolbar .right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+  .demo-play{height:34px;padding:0 14px;border-radius:8px;border:0;background:var(--secondary);color:#fff;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;}
+  .demo-play svg{width:14px;height:14px;}
+
+  .cam{flex:1;position:relative;border-radius:10px;overflow:hidden;background:#1c1f22;min-height:0;display:flex;align-items:center;justify-content:center;}
+  .cam .grid-lines{position:absolute;inset:0;background:linear-gradient(0deg,rgba(255,255,255,.04) 1px,transparent 1px) 0 0/48px 48px,linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px) 0 0/48px 48px;}
+  .cam .label{position:absolute;top:12px;left:12px;font-size:12px;color:#fff;background:rgba(0,0,0,.4);padding:3px 9px;border-radius:6px;font-weight:600;}
+  .cam .live{position:absolute;top:12px;right:12px;font-size:11px;color:#fff;background:rgba(0,0,0,.4);padding:3px 9px;border-radius:6px;font-weight:700;display:flex;align-items:center;gap:5px;}
+  .cam .live i{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1.2s infinite;}
+  @keyframes blink{50%{opacity:.3;}}
+  .cam .to-next{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);color:#fff;border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px;font-size:13px;}
+  .cam .to-next b{font-weight:700;}
+  .cam .camicon{color:rgba(255,255,255,.25);}
+  .cam .camicon svg{width:64px;height:64px;}
+
+  /* 원격제어 우측 패널: 다구간 진행 리스트 + 미니맵 */
+  .r-panel{width:300px;flex:0 0 300px;background:#fff;border-left:1px solid var(--mono-100);display:flex;flex-direction:column;}
+  .r-panel .rp-sec{padding:14px 16px;border-bottom:1px solid var(--mono-100);}
+  .rp-title{font-size:13px;font-weight:700;color:var(--mono-700);display:flex;align-items:center;gap:8px;}
+  .rp-title .n{margin-left:auto;font-size:11px;color:var(--mono-500);font-weight:500;}
+  .rp-list{margin-top:12px;display:flex;flex-direction:column;}
+  .rp-stop{display:flex;align-items:center;gap:10px;padding:7px 0;position:relative;}
+  .rp-stop::before{content:"";position:absolute;left:11px;top:-6px;height:13px;width:2px;background:var(--mono-200);}
+  .rp-stop:first-child::before{display:none;}
+  .rp-stop.done::before,.rp-stop.active::before{background:var(--primary);}
+  .rp-stop .mk{width:24px;height:24px;flex:0 0 auto;border-radius:50%;background:var(--mono-100);color:var(--mono-400);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:1;}
+  .rp-stop.active .mk{background:var(--primary);color:#fff;box-shadow:0 0 0 4px var(--primary-50);}
+  .rp-stop.done .mk{background:var(--primary-50);color:var(--primary);}
+  .rp-stop .nm{font-size:13px;font-weight:500;color:var(--mono-800);}
+  .rp-stop.pending .nm{color:var(--mono-400);font-weight:400;}
+  .rp-stop .st{margin-left:auto;font-size:11px;font-weight:600;}
+  .rp-stop.active .st{color:var(--primary);}
+  .rp-stop.done .st{color:var(--mono-400);}
+  .rp-stop.pending .st{color:var(--mono-300);}
+
+  .mini-map{flex:1;position:relative;overflow:hidden;background:linear-gradient(0deg,rgba(0,0,0,.02) 1px,transparent 1px) 0 0/28px 28px,linear-gradient(90deg,rgba(0,0,0,.02) 1px,transparent 1px) 0 0/28px 28px,#e8ebe6;min-height:180px;}
+  .mini-map .mm-label{position:absolute;top:10px;left:12px;font-size:11px;font-weight:600;color:var(--mono-600);background:rgba(255,255,255,.85);padding:3px 8px;border-radius:6px;z-index:5;}
+
+  /* 토스트 */
+  .toast-wrap{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;gap:8px;align-items:center;}
+  .toast{background:var(--mono-800);color:#fff;border-radius:10px;padding:12px 18px;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;animation:drop .3s ease;}
+  .toast .ic{width:20px;height:20px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;flex:0 0 auto;}
+  .toast .ic svg{width:13px;height:13px;color:#fff;}
+  .toast b{font-weight:700;}
+  @keyframes drop{from{transform:translateY(-12px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 좌측 사이드바 -->
+  <nav class="sidebar">
+    <div class="collapse"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg></div>
+    <button class="nav-icon active" title="모니터링"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></button>
+    <button class="nav-icon" title="로봇"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 14h.01M15 14h.01"/></svg></button>
+    <button class="nav-icon" title="사이트"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></button>
+    <button class="nav-icon" title="시나리오"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h7v8l10-12h-7z"/></svg></button>
+    <div class="spacer"></div>
+    <button class="nav-icon" title="설정"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9 2 2 0 11-2.8 2.8 1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5 2 2 0 11-4 0 1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.9.3 2 2 0 11-2.8-2.8 1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1 2 2 0 110-4 1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.9 2 2 0 112.8-2.8 1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.5 2 2 0 114 0 1.7 1.7 0 001 1.5 1.7 1.7 0 001.9-.3 2 2 0 112.8 2.8 1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.5 1 2 2 0 110 4 1.7 1.7 0 00-1.5 1z"/></svg></button>
+  </nav>
+
+  <!-- ===== 화면 A: 임무 설정 (지도 + 패널) ===== -->
+  <div class="stage" id="stageSetup">
+    <main class="map" id="map">
+      <!-- 블록/도로 -->
+      <div class="block" style="left:8%;top:12%;width:170px;height:120px;"></div>
+      <div class="block" style="left:30%;top:20%;width:210px;height:140px;"></div>
+      <div class="block" style="left:12%;top:54%;width:150px;height:170px;"></div>
+      <div class="block" style="left:44%;top:56%;width:190px;height:120px;"></div>
+      <div class="block" style="left:66%;top:16%;width:170px;height:190px;"></div>
+      <div class="block" style="left:72%;top:60%;width:150px;height:120px;"></div>
+      <div class="road" style="left:0;top:44%;width:100%;height:14px;"></div>
+      <div class="road" style="left:28%;top:0;width:14px;height:100%;"></div>
+      <div class="road" style="left:62%;top:0;width:12px;height:100%;"></div>
+      <div class="road" style="left:0;top:78%;width:100%;height:10px;"></div>
+
+      <div class="map-topbar">
+        <div class="region-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00BA7C" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <div><div class="name">성수동</div><div class="desc">배달, 순찰, 뉴비오더</div></div>
+          <span class="chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></span>
+        </div>
+        <div class="map-controls">
+          <div style="display:flex;gap:8px;">
+            <div class="seg"><button class="active">지도</button><button>위성</button></div>
+            <button class="map-icon-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3M16 3h3a2 2 0 012 2v3M8 21H5a2 2 0 01-2-2v-3M16 21h3a2 2 0 002-2v-3"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <svg class="route-svg" id="routeSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+      <div id="pinLayer"></div>
+    </main>
+
+    <!-- 우측 패널: 임무 설정 -->
+    <aside class="panel">
+      <div class="panel-inner">
+        <div>
+          <div class="panel-title">임무 설정</div>
+          <div class="panel-sub">출발지에서 여러 목적지를 <b>순차 방문</b>하는 다목적지 배송 임무를 만듭니다.</div>
+        </div>
+        <div class="robot-name">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--order)" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M9 14h.01M15 14h.01"/></svg>
+          5호기 (관제연습/산타뉴비)
+          <span class="badge">대기</span>
+        </div>
+
+        <div class="flow-body">
+          <!-- 시나리오 -->
+          <div class="field">
+            <label>시나리오</label>
+            <div class="select" id="scenarioSel"></div>
+          </div>
+
+          <!-- 출발지 -->
+          <div class="field">
+            <label>출발지 (스테이션) <span class="req">*</span></label>
+            <div class="select" id="originSel"></div>
+          </div>
+
+          <!-- 목적지 다중 -->
+          <div class="field">
+            <div class="dest-head">
+              <span class="lab">방문 목적지 <span class="req">*</span></span>
+              <span class="cnt" id="destCnt">0곳</span>
+            </div>
+            <div class="dest-list" id="destList"></div>
+            <button class="add-dest" id="addDest">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+              목적지 추가
+            </button>
+          </div>
+
+          <!-- 경로 요약 -->
+          <div class="route-card" id="routeCard" style="display:none;">
+            <div class="rc-head">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M9 20l-5.5 2 1-6L0 11l6-1L9 4l3 6 6 1-4.5 5 1 6z" transform="scale(0)"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M6 17V9a4 4 0 014-4h4a4 4 0 014 4"/></svg>
+              방문 경로
+              <span class="est" id="routeEst"></span>
+            </div>
+            <div class="rc-body" id="routeBody"></div>
+          </div>
+        </div>
+
+        <div class="panel-foot">
+          <button class="btn-cancel">취소</button>
+          <button class="btn-submit" id="submitBtn" disabled>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+            임무 시작
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===== 화면 B: 원격제어 (다구간) ===== -->
+  <div class="remote" id="remote">
+    <div class="r-header">
+      <div class="r-header-top">
+        <button class="back" id="btnBack"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+        <div class="title">원격제어</div>
+        <div class="code">5호기 · 성수동</div>
+        <div class="multi-badge">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 20l-6 2 6-18 6 18-6-2z" transform="scale(0)"/><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="19" cy="14" r="2"/><path d="M7 19h6a3 3 0 003-3M17 5H9"/></svg>
+          다목적지 <b id="badgeCnt">3</b>구간
+        </div>
+        <div class="actions">
+          <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v6M12 17v6M4.2 4.2l4.3 4.3M15.5 15.5l4.3 4.3M1 12h6M17 12h6"/></svg>일시정지</button>
+          <button class="btn danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>긴급정지</button>
+        </div>
+      </div>
+      <div class="r-header-stats">
+        <span>WIFI <b>84ms</b></span><span class="vsep"></span>
+        <span>속도 <b>1.8 m/s</b></span><span class="vsep"></span>
+        <span>충전량 <b>72%</b></span><span class="vsep"></span>
+        <span>현재 구간 <b id="statCur">1 / 3</b></span><span class="vsep"></span>
+        <span>다음 목적지 <b id="statNext">—</b></span>
+      </div>
+    </div>
+
+    <div class="r-content">
+      <div class="r-center">
+        <!-- 다구간 스테퍼 -->
+        <div class="stepper">
+          <div class="stepper-top">
+            <button class="close" id="btnCloseMission" title="임무 종료"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+            <div class="steps" id="stepperSteps"></div>
+          </div>
+          <div class="progress-track"><div class="progress-fill" id="progFill"></div></div>
+        </div>
+
+        <!-- 툴바 -->
+        <div class="r-toolbar">
+          <div class="pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2"/></svg>밝기 1</div>
+          <div class="pill"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg>화질 중간</div>
+          <div class="right">
+            <button class="demo-play" id="demoPlay"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 3l14 9-14 9V3z"/></svg>구간 진행 시뮬레이션</button>
+          </div>
+        </div>
+
+        <!-- 카메라 -->
+        <div class="cam">
+          <div class="grid-lines"></div>
+          <span class="label">전방</span>
+          <span class="live"><i></i>LIVE</span>
+          <span class="camicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+          <div class="to-next" id="camToNext">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            <span>다음 목적지 <b id="camNextName">—</b> 이동 중</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 원격제어 우측: 다구간 진행 + 미니맵 -->
+      <aside class="r-panel">
+        <div class="rp-sec">
+          <div class="rp-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M6 17V9a4 4 0 014-4h4a4 4 0 014 4"/></svg>
+            방문 목적지
+            <span class="n" id="rpProgress">0 / 3 완료</span>
+          </div>
+          <div class="rp-list" id="rpList"></div>
+        </div>
+        <div class="mini-map" id="miniMap">
+          <span class="mm-label">실시간 위치</span>
+          <svg class="route-svg" id="miniRouteSvg" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+          <div id="miniPinLayer"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+  /* ===== POI 카탈로그 (지도 좌표 %) ===== */
+  const STATIONS = [
+    { name:"성수 스테이션 A", x:18, y:74 },
+    { name:"성수 스테이션 B", x:24, y:40 },
+    { name:"충전 스테이션",   x:14, y:88 },
+  ];
+  const POIS = [
+    { name:"강남맛집갈비집",    x:40, y:30 },
+    { name:"뉴빌리티빌라 1동",  x:66, y:38 },
+    { name:"성수역 2번 출구",   x:54, y:66 },
+    { name:"연무장길 정문",     x:82, y:54 },
+    { name:"카페거리 앞",       x:34, y:52 },
+    { name:"서울숲 게이트",     x:70, y:74 },
+  ];
+  const poiXY = (name) => POIS.find(p=>p.name===name) || STATIONS.find(s=>s.name===name);
+
+  const ICONS = {
+    plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a1 1 0 01-1 1H7a1 1 0 01-1-1V6"/><path d="M10 11v6M14 11v6"/></svg>',
+    up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M18 15l-6-6-6 6"/></svg>',
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>',
+    chev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg>',
+    pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+  };
+
+  /* ===== 상태 ===== */
+  let state = {
+    scenario: "배달",
+    origin: "성수 스테이션 A",
+    dests: [null, null],          // 최초 2개 행
+    returnToStation: true,
+  };
+
+  /* ===== 커스텀 셀렉트 ===== */
+  function buildSelect(opts, ph, current, onPick, lead){
+    const wrap=document.createElement("div"); wrap.className="select";
+    const usedElsewhere = (v)=> false;
+    wrap.innerHTML=`
+      <div class="box ${current?'':'placeholder'}">
+        ${lead?`<span class="lead">${lead}</span>`:''}
+        <span class="val">${current||ph}</span>
+        <span class="chev">${ICONS.chev}</span>
+      </div>
+      <div class="menu">${opts.map(o=>`<div class="opt ${o.name===current?'sel':''} ${o.disabled?'disabled':''}">${o.name}</div>`).join("")}</div>`;
+    const box=wrap.querySelector(".box");
+    box.onclick=(e)=>{ e.stopPropagation(); closeAllSelects(wrap); wrap.classList.toggle("open"); };
+    wrap.querySelectorAll(".opt").forEach((op,i)=>{
+      if(opts[i].disabled) return;
+      op.onclick=(e)=>{ e.stopPropagation();
+        box.querySelector(".val").textContent=opts[i].name; box.classList.remove("placeholder");
+        wrap.classList.remove("open"); onPick(opts[i].name);
+      };
+    });
+    return wrap;
+  }
+  function closeAllSelects(except){ document.querySelectorAll(".select.open").forEach(s=>{ if(s!==except) s.classList.remove("open"); }); }
+  document.addEventListener("click",()=>closeAllSelects(null));
+
+  /* ===== 시나리오 / 출발지 셀렉트 ===== */
+  function renderTopSelects(){
+    const sc=document.getElementById("scenarioSel"); sc.innerHTML="";
+    sc.appendChild(buildSelect(
+      ["배달","순회","커스텀"].map(n=>({name:n})), "선택", state.scenario,
+      (v)=>{ state.scenario=v; }, ICONS.pin
+    ));
+    const og=document.getElementById("originSel"); og.innerHTML="";
+    og.appendChild(buildSelect(
+      STATIONS.map(s=>({name:s.name})), "출발 스테이션 선택", state.origin,
+      (v)=>{ state.origin=v; renderAll(); }, ICONS.pin
+    ));
+  }
+
+  /* ===== 목적지 다중 (순서 + CRUD) ===== */
+  function destOptions(currentVal){
+    // 이미 다른 행에서 선택한 POI는 비활성
+    const used = state.dests.filter(d=>d && d!==currentVal);
+    return POIS.map(p=>({ name:p.name, disabled: used.includes(p.name) }));
+  }
+  function renderDestList(){
+    const host=document.getElementById("destList"); host.innerHTML="";
+    state.dests.forEach((val,idx)=>{
+      const row=document.createElement("div");
+      row.className="dest-row"+(val?" filled":"");
+      const ord=document.createElement("span"); ord.className="ord"; ord.textContent=idx+1;
+      row.appendChild(ord);
+
+      const selWrap=document.createElement("div"); selWrap.className="sel-wrap";
+      selWrap.appendChild(buildSelect(destOptions(val), "목적지 선택", val, (v)=>{ state.dests[idx]=v; renderAll(); }));
+      row.appendChild(selWrap);
+
+      const re=document.createElement("div"); re.className="reorder";
+      const up=document.createElement("button"); up.innerHTML=ICONS.up; up.disabled=idx===0;
+      up.onclick=(e)=>{ e.stopPropagation(); [state.dests[idx-1],state.dests[idx]]=[state.dests[idx],state.dests[idx-1]]; renderAll(); };
+      const dn=document.createElement("button"); dn.innerHTML=ICONS.down; dn.disabled=idx===state.dests.length-1;
+      dn.onclick=(e)=>{ e.stopPropagation(); [state.dests[idx+1],state.dests[idx]]=[state.dests[idx],state.dests[idx+1]]; renderAll(); };
+      re.appendChild(up); re.appendChild(dn); row.appendChild(re);
+
+      const del=document.createElement("button"); del.className="del"; del.innerHTML=ICONS.trash; del.title="삭제";
+      del.onclick=(e)=>{ e.stopPropagation(); state.dests.splice(idx,1); if(state.dests.length===0) state.dests.push(null); renderAll(); };
+      row.appendChild(del);
+
+      host.appendChild(row);
+    });
+    const filled=state.dests.filter(Boolean).length;
+    document.getElementById("destCnt").textContent=filled+"곳";
+    const addBtn=document.getElementById("addDest");
+    addBtn.disabled = state.dests.length>=6 || state.dests.some(d=>!d);  // 빈 행 있으면 추가 막기
+  }
+  document.getElementById("addDest").onclick=()=>{ if(state.dests.length<6){ state.dests.push(null); renderAll(); } };
+
+  /* ===== 지도 핀 + 경로 ===== */
+  function routeStops(){
+    const filled=state.dests.filter(Boolean);
+    const stops=[{name:state.origin, kind:"origin"}];
+    filled.forEach(d=>stops.push({name:d, kind:"dest"}));
+    if(state.returnToStation && filled.length) stops.push({name:state.origin, kind:"ret"});
+    return stops;
+  }
+  function drawMap(){
+    const svg=document.getElementById("routeSvg");
+    const layer=document.getElementById("pinLayer");
+    layer.innerHTML=""; svg.innerHTML="";
+    const stops=routeStops();
+
+    // 경로 선
+    if(stops.length>1){
+      const pts=stops.map(s=>{const p=poiXY(s.name);return `${p.x},${p.y}`;}).join(" ");
+      svg.innerHTML=`
+        <polyline points="${pts}" fill="none" stroke="#00BA7C" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="0" opacity="0.9"/>
+        <polyline points="${pts}" fill="none" stroke="#00BA7C" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.14"/>`;
+    }
+
+    // 출발지 핀
+    const st=poiXY(state.origin);
+    layer.appendChild(makePin(st.x, st.y, {station:true, label:state.origin}));
+    // 목적지 핀 (번호)
+    state.dests.filter(Boolean).forEach((d,i)=>{
+      const p=poiXY(d);
+      layer.appendChild(makePin(p.x,p.y,{ord:i+1, label:d}));
+    });
+    // 후보(미선택) POI를 옅게
+    POIS.filter(p=>!state.dests.includes(p.name)).forEach(p=>{
+      layer.appendChild(makePin(p.x,p.y,{ghost:true,label:p.name}));
+    });
+  }
+  function makePin(x,y,opt){
+    const el=document.createElement("div");
+    el.className="pin"+(opt.station?" station":"")+(opt.ghost?" ghost":"");
+    el.style.left=x+"%"; el.style.top=y+"%";
+    const ord = opt.ord? `<span class="ord">${opt.ord}</span>`:"";
+    const stMark = opt.station? `<span class="ord" style="background:#fff;color:#262626">S</span>`:"";
+    el.innerHTML=`<div class="bubble">${ord}${stMark}${opt.label}</div><div class="tip"></div>`;
+    return el;
+  }
+
+  /* ===== 경로 요약 카드 ===== */
+  function drawRouteCard(){
+    const card=document.getElementById("routeCard");
+    const body=document.getElementById("routeBody");
+    const filled=state.dests.filter(Boolean);
+    if(filled.length===0){ card.style.display="none"; return; }
+    card.style.display="block";
+    const stops=routeStops();
+    body.innerHTML=stops.map((s,i)=>{
+      let cls="dest", mk=(i), tag="";
+      if(s.kind==="origin"){ cls="origin"; mk="출"; tag="출발"; }
+      else if(s.kind==="ret"){ cls="ret"; mk="복"; tag="스테이션 복귀"; }
+      else { mk=i; tag=`${i}번째 방문`; }
+      return `<div class="rc-stop ${cls}"><span class="mk">${mk}</span><span class="nm">${s.name}</span><span class="tg">${tag}</span></div>`;
+    }).join("");
+    // 예상치 (더미 계산)
+    const legs=stops.length-1;
+    const est=(legs*4.5).toFixed(0);
+    document.getElementById("routeEst").textContent=`${filled.length}개 목적지 · 약 ${est}분`;
+  }
+
+  /* ===== 제출 검증 ===== */
+  function validate(){
+    const filled=state.dests.filter(Boolean).length;
+    document.getElementById("submitBtn").disabled = !(state.origin && filled>=1);
+  }
+
+  function renderAll(){ renderDestList(); drawMap(); drawRouteCard(); validate(); }
+
+  /* ===== 화면 전환 A→B ===== */
+  document.getElementById("submitBtn").onclick=()=>{
+    const filled=state.dests.filter(Boolean);
+    startRemote(filled);
+  };
+  document.getElementById("btnBack").onclick=()=> hideRemote();
+
+  function toast(msgHTML){
+    const w=document.getElementById("toastWrap");
+    const t=document.createElement("div"); t.className="toast";
+    t.innerHTML=`<span class="ic">${ICONS.check}</span><span>${msgHTML}</span>`;
+    w.appendChild(t);
+    setTimeout(()=>{ t.style.transition="opacity .3s"; t.style.opacity="0"; setTimeout(()=>t.remove(),300); }, 3200);
+  }
+
+  /* ===== 원격제어 (다구간) ===== */
+  let R = { legs:[], cur:0, animTimer:null };
+
+  function startRemote(filled){
+    // 구간(leg) 구성: origin→d1, d1→d2, ..., dN→origin(복귀)
+    const stops=[{name:state.origin,kind:"origin"}, ...filled.map(d=>({name:d,kind:"dest"}))];
+    if(state.returnToStation) stops.push({name:state.origin,kind:"ret"});
+    const legs=[];
+    for(let i=0;i<stops.length-1;i++){ legs.push({from:stops[i], to:stops[i+1]}); }
+    R.legs=legs; R.cur=0; R.stops=stops; R.dests=filled;
+
+    document.getElementById("badgeCnt").textContent=filled.length;
+    buildStepper(); buildRpList(); buildMiniMap();
+    updateRemoteUI();
+
+    document.getElementById("stageSetup").style.display="none";
+    document.getElementById("remote").classList.add("show");
+    toast(`<b>${filled.length}개 목적지</b> 다목적지 배송 임무를 시작합니다`);
+  }
+  function hideRemote(){
+    document.getElementById("remote").classList.remove("show");
+    document.getElementById("stageSetup").style.display="flex";
+    clearInterval(R.animTimer);
+  }
+
+  function legLabel(leg,i){
+    const fromTxt = leg.from.kind==="origin"? "대기 스테이션에서" : `${leg.from.name}에서`;
+    const toTxt = leg.to.kind==="ret"? "스테이션으로 복귀" : `${leg.to.name}(으)로 이동`;
+    return { l1:fromTxt, l2:toTxt };
+  }
+
+  function buildStepper(){
+    const host=document.getElementById("stepperSteps"); host.innerHTML="";
+    R.legs.forEach((leg,i)=>{
+      const {l1,l2}=legLabel(leg,i);
+      const step=document.createElement("div"); step.className="step"; step.dataset.i=i;
+      const num = leg.to.kind==="ret"? "복" : (i+ (R.stops[0].kind==="origin"?0:1) )+1 - (R.stops[0].kind==="origin"?0:0);
+      // 표시 번호: 목적지 순번(복귀 구간은 '복')
+      const dispNum = leg.to.kind==="ret" ? "복" : (i+1);
+      step.innerHTML=`<span class="sdot">${dispNum}</span>
+        <div class="stext"><div class="l1">${l1}</div><div class="l2">${l2}</div></div>
+        <span class="chk">${ICONS.check}</span>`;
+      host.appendChild(step);
+    });
+  }
+  function buildRpList(){
+    const host=document.getElementById("rpList"); host.innerHTML="";
+    R.dests.forEach((d,i)=>{
+      const row=document.createElement("div"); row.className="rp-stop pending"; row.dataset.i=i;
+      row.innerHTML=`<span class="mk">${i+1}</span><span class="nm">${d}</span><span class="st">대기</span>`;
+      host.appendChild(row);
+    });
+    if(state.returnToStation){
+      const row=document.createElement("div"); row.className="rp-stop pending ret";
+      row.innerHTML=`<span class="mk">복</span><span class="nm">${state.origin} 복귀</span><span class="st">대기</span>`;
+      host.appendChild(row);
+    }
+  }
+  function buildMiniMap(){
+    const svg=document.getElementById("miniRouteSvg");
+    const layer=document.getElementById("miniPinLayer");
+    layer.innerHTML=""; svg.innerHTML="";
+    const pts=R.stops.map(s=>{const p=poiXY(s.name);return `${p.x},${p.y}`;}).join(" ");
+    svg.innerHTML=`<polyline points="${pts}" fill="none" stroke="#00BA7C" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"/>`;
+    // 핀
+    const st=poiXY(state.origin);
+    layer.appendChild(makePin(st.x,st.y,{station:true,label:"S"}));
+    R.dests.forEach((d,i)=>{ const p=poiXY(d); layer.appendChild(makePin(p.x,p.y,{ord:i+1,label:i+1})); });
+    // 로봇 도트
+    const dot=document.createElement("div"); dot.className="robot-dot"; dot.id="robotDot";
+    dot.innerHTML=`<div class="ring"></div><div class="core"></div>`;
+    dot.style.left=st.x+"%"; dot.style.top=st.y+"%";
+    layer.appendChild(dot);
+  }
+
+  function updateRemoteUI(){
+    const total=R.dests.length;
+    // 스테퍼 상태
+    document.querySelectorAll("#stepperSteps .step").forEach((el)=>{
+      const i=+el.dataset.i;
+      el.classList.toggle("done", i<R.cur);
+      el.classList.toggle("active", i===R.cur);
+      el.classList.toggle("pending", i>R.cur);
+    });
+    // 진행 게이지
+    const pct = R.legs.length? Math.min(100, (R.cur/R.legs.length)*100):0;
+    document.getElementById("progFill").style.width=pct+"%";
+
+    // 현재 구간 헤더
+    const curLeg=R.legs[Math.min(R.cur,R.legs.length-1)];
+    const nextName = curLeg? (curLeg.to.kind==="ret"?`${state.origin}(복귀)`:curLeg.to.name) : "완료";
+    const curDestNum = Math.min(R.cur+1, total);
+    document.getElementById("statCur").textContent=`${Math.min(R.cur+1,R.legs.length)} / ${R.legs.length}`;
+    document.getElementById("statNext").textContent=nextName;
+    document.getElementById("camNextName").textContent=nextName;
+
+    // 우측 방문 리스트
+    let doneDest = R.cur; // cur개 구간 완료 == cur개 지점 도착(복귀 제외 고려)
+    document.querySelectorAll("#rpList .rp-stop").forEach((el,idx)=>{
+      el.classList.remove("done","active","pending");
+      const st=el.querySelector(".st");
+      if(idx<R.cur){ el.classList.add("done"); st.textContent="도착"; }
+      else if(idx===R.cur){ el.classList.add("active"); st.textContent="이동 중"; }
+      else { el.classList.add("pending"); st.textContent="대기"; }
+    });
+    const doneCount=Math.min(R.cur, R.stops.filter(s=>s.kind!=="origin").length);
+    document.getElementById("rpProgress").textContent=`${Math.min(R.cur,total)} / ${total} 완료`;
+
+    // 로봇 도트 위치 = 현재 구간의 출발점(막 도착한 지점)
+    const dot=document.getElementById("robotDot");
+    if(dot){
+      const here = R.cur<R.legs.length ? R.legs[R.cur].from : R.stops[R.stops.length-1];
+      const p=poiXY(here.name); dot.style.left=p.x+"%"; dot.style.top=p.y+"%";
+    }
+    // 카메라 안내
+    const camTo=document.getElementById("camToNext");
+    camTo.style.display = R.cur<R.legs.length ? "flex":"none";
+  }
+
+  // 한 구간 진행(도착 처리)
+  function advanceLeg(){
+    if(R.cur>=R.legs.length){ return false; }
+    // 로봇을 다음 지점으로 이동 애니메이션
+    const dot=document.getElementById("robotDot");
+    const to=R.legs[R.cur].to; const p=poiXY(to.name);
+    if(dot){ dot.style.left=p.x+"%"; dot.style.top=p.y+"%"; }
+    R.cur++;
+    setTimeout(()=>{
+      updateRemoteUI();
+      if(to.kind==="dest"){
+        const n=R.dests.indexOf(to.name)+1;
+        toast(`<b>${n}번 목적지</b> ${to.name} 도착 · 다음 구간으로 이동합니다`);
+      } else if(to.kind==="ret"){
+        toast(`모든 목적지 배송 완료 · <b>스테이션 복귀</b> 완료`);
+      }
+    }, 900);
+    return true;
+  }
+
+  // 시뮬레이션 (자동 진행)
+  document.getElementById("demoPlay").onclick=()=>{
+    clearInterval(R.animTimer);
+    if(R.cur>=R.legs.length){ R.cur=0; updateRemoteUI(); }
+    R.animTimer=setInterval(()=>{
+      const more=advanceLeg();
+      if(!more || R.cur>=R.legs.length){ clearInterval(R.animTimer); }
+    }, 1900);
+  };
+  document.getElementById("btnCloseMission").onclick=()=> hideRemote();
+
+  /* ===== 초기 렌더 ===== */
+  renderTopSelects();
+  renderAll();
+
+  /* URL 파라미터 — 시나리오 오버뷰 임베드용
+     ?screen=remote → 3목적지 프리필 후 원격제어(화면 B) 자동 진입 */
+  (function(){
+    const q=new URLSearchParams(location.search);
+    if(q.get("screen")==="remote"){
+      state.dests=["강남맛집갈비집","뉴빌리티빌라 1동","성수역 2번 출구"];
+      renderAll();
+      startRemote(state.dests.filter(Boolean));
+    }
+  })();
+</script>
+</body>
+</html>

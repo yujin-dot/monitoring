@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>다목적지 검체 배송 — 전체 시나리오 뷰</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  :root{
+    --primary:#00BA7C; --primary-50:#E6F8F2; --primary-700:#008458;
+    --secondary:#426CFF; --secondary-50:#ECF0FF;
+    --tertiary:#F8914A; --tertiary-50:#FFF3EB;
+    --order:#00B2E3;
+    --mono-900:#0f1115; --mono-800:#262626; --mono-700:#434343; --mono-600:#555;
+    --mono-500:#7B7B7B; --mono-400:#9D9D9D; --mono-300:#C4C4C4; --mono-200:#D9D9D9;
+    --mono-100:#E9E9E9; --mono-50:#F5F5F5;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Pretendard,-apple-system,system-ui,sans-serif;background:#111318;color:var(--mono-800);-webkit-font-smoothing:antialiased;}
+  a{color:inherit;text-decoration:none;}
+
+  /* 헤더 */
+  .top{padding:34px 40px 26px;background:linear-gradient(180deg,#161922,#111318);color:#fff;border-bottom:1px solid rgba(255,255,255,.08);}
+  .top .eyebrow{font-size:12px;font-weight:700;letter-spacing:.12em;color:var(--primary);text-transform:uppercase;}
+  .top h1{font-size:30px;font-weight:800;margin-top:8px;letter-spacing:-.01em;}
+  .top .lead{font-size:14px;color:#aeb4bf;margin-top:10px;line-height:1.7;max-width:760px;}
+  .top .lead b{color:#fff;}
+
+  /* 페르소나 매트릭스 */
+  .persona-row{display:flex;gap:14px;margin-top:22px;flex-wrap:wrap;}
+  .persona{flex:1;min-width:230px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:16px 18px;position:relative;overflow:hidden;}
+  .persona::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c);}
+  .persona .who{font-size:15px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px;}
+  .persona .who .ico{width:26px;height:26px;border-radius:7px;background:var(--c);display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto;}
+  .persona .who .ico svg{width:16px;height:16px;}
+  .persona .role{font-size:12px;color:#8b909b;margin-top:8px;line-height:1.5;}
+  .persona .scr{font-size:12.5px;font-weight:600;color:var(--c2,#cfd3da);margin-top:10px;display:flex;align-items:center;gap:6px;}
+  .persona .scr svg{width:14px;height:14px;}
+
+  /* 흐름 스트립 */
+  .flowstrip{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:16px 40px;background:#0d0f14;border-bottom:1px solid rgba(255,255,255,.06);}
+  .flowstrip .fs{font-size:12.5px;font-weight:700;color:#cfd3da;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:7px 14px;display:flex;align-items:center;gap:7px;}
+  .flowstrip .fs .b{width:18px;height:18px;border-radius:50%;background:var(--c);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .flowstrip .arr{color:#4a505c;}
+
+  /* 본문 */
+  .stage{padding:8px 40px 60px;}
+  .phase{background:#fff;border-radius:20px;margin-top:22px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.3);}
+  .phase-head{display:flex;align-items:flex-start;gap:16px;padding:22px 26px;border-bottom:1px solid var(--mono-100);}
+  .phase-head .pn{width:44px;height:44px;flex:0 0 auto;border-radius:12px;background:var(--c);color:#fff;font-size:20px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .phase-head .pt{flex:1;min-width:0;}
+  .phase-head .pt h2{font-size:20px;font-weight:800;color:var(--mono-800);}
+  .phase-head .pt .goal{font-size:13.5px;color:var(--mono-600);margin-top:5px;line-height:1.6;}
+  .phase-head .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  .ptag{font-size:11.5px;font-weight:700;border-radius:999px;padding:4px 11px;display:inline-flex;align-items:center;gap:5px;}
+  .ptag .dot{width:7px;height:7px;border-radius:50%;}
+  .ptag.send{background:var(--primary-50);color:var(--primary-700);}
+  .ptag.admin{background:var(--secondary-50);color:var(--secondary);}
+  .ptag.ops{background:var(--tertiary-50);color:#b5651d;}
+  .ptag.robot{background:var(--mono-100);color:var(--mono-700);}
+  .ptag.sys{background:#EAF7FB;color:#0787a8;}
+
+  .phase-body{display:flex;gap:26px;padding:24px 26px 28px;align-items:flex-start;}
+  .steps{flex:1 1 300px;min-width:300px;}
+  .steps .feat{background:var(--primary-50);border:1px solid #CFEFE2;border-radius:12px;padding:12px 14px;margin-bottom:16px;display:flex;gap:10px;align-items:flex-start;}
+  .steps .feat .fi{width:24px;height:24px;flex:0 0 auto;border-radius:7px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;}
+  .steps .feat .fi svg{width:15px;height:15px;}
+  .steps .feat .ft{font-size:13px;line-height:1.55;color:var(--mono-700);}
+  .steps .feat .ft b{color:var(--primary-700);}
+  .steplist{list-style:none;display:flex;flex-direction:column;gap:2px;}
+  .steplist li{display:flex;gap:12px;padding:8px 2px;position:relative;}
+  .steplist li .si{width:24px;height:24px;flex:0 0 auto;border-radius:50%;background:var(--mono-100);color:var(--mono-600);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2;}
+  .steplist li::before{content:"";position:absolute;left:11px;top:-6px;height:14px;width:2px;background:var(--mono-200);}
+  .steplist li:first-child::before{display:none;}
+  .steplist li .st{font-size:13.5px;color:var(--mono-800);line-height:1.5;padding-top:2px;}
+  .steplist li .st .meta{display:block;font-size:11.5px;color:var(--mono-400);margin-top:2px;}
+
+  /* 스크린 임베드 */
+  .screens{flex:0 0 auto;display:flex;gap:18px;flex-wrap:wrap;}
+  .screens.stack{flex-direction:column;}
+  .device{display:flex;flex-direction:column;}
+  .device .bar{display:flex;align-items:center;gap:8px;background:var(--mono-800);color:#fff;border-radius:10px 10px 0 0;padding:8px 12px;font-size:12px;font-weight:600;}
+  .device .bar .dots{display:flex;gap:4px;}
+  .device .bar .dots i{width:9px;height:9px;border-radius:50%;background:#4a505c;}
+  .device .bar .nm{margin-left:2px;}
+  .device .bar .open{margin-left:auto;font-size:11px;color:#9fd8c4;display:flex;align-items:center;gap:4px;font-weight:600;}
+  .device .bar .open svg{width:12px;height:12px;}
+  .device .frame{overflow:hidden;border:1px solid var(--mono-200);border-top:0;border-radius:0 0 10px 10px;background:#fff;position:relative;}
+  .device iframe{border:0;transform-origin:top left;display:block;}
+  .device .cap{font-size:11.5px;color:var(--mono-500);margin-top:8px;text-align:center;font-weight:500;}
+
+  .dev-mobile .frame{width:264px;height:520px;}
+  .dev-mobile iframe{width:426px;height:838px;transform:scale(.62);}
+  .dev-desk .frame{width:560px;height:340px;}
+  .dev-desk iframe{width:1400px;height:850px;transform:scale(.40);}
+
+  /* 관리인 플레이스홀더 */
+  .placeholder{width:560px;height:340px;border:2px dashed var(--mono-200);border-radius:0 0 10px 10px;border-top:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:var(--mono-50);color:var(--mono-400);text-align:center;padding:20px;}
+  .placeholder svg{width:38px;height:38px;}
+  .placeholder .pm{font-size:14px;font-weight:600;color:var(--mono-500);}
+  .placeholder .ps{font-size:12px;color:var(--mono-400);line-height:1.5;}
+
+  .footer{padding:22px 40px 50px;color:#6b7280;font-size:12px;line-height:1.7;}
+  .footer b{color:#aeb4bf;}
+
+  @media(max-width:1180px){
+    .phase-body{flex-direction:column;}
+    .screens{flex-wrap:wrap;}
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="eyebrow">Neubility · 다목적지 검체 배송</div>
+  <h1>스테이션 → 여러 부서, 한 번에 보내는 배송 시나리오</h1>
+  <p class="lead">현장에서 검체를 <b>한 번의 요청으로 여러 목적지에 순차 배송</b>하는 전체 흐름입니다. 발송인이 뉴비오더 앱에서 다목적지를 지정하면, 시스템이 경로를 만들고 로봇이 순차 배송하며, 관제사는 NCC에서 다구간 임무를 모니터링·원격제어합니다. 각 단계의 실제 화면을 아래에 임베드했습니다.</p>
+
+  <div class="persona-row">
+    <div class="persona" style="--c:var(--primary);--c2:#7fe0c0">
+      <div class="who"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/></svg></span>발송인 · 수령자</div>
+      <div class="role">고객사 현장 인원(간호사 등). 검체를 보내고, 각 부서에서 받습니다.</div>
+      <div class="scr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="3"/></svg>뉴비오더 — 모바일 웹</div>
+    </div>
+    <div class="persona" style="--c:var(--secondary);--c2:#9db4ff">
+      <div class="who"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5"/></svg></span>고객사 관리인</div>
+      <div class="role">고객사 운영 담당. 배송 현황을 한눈에 조회합니다.</div>
+      <div class="scr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>NCC — 메인 페이지</div>
+    </div>
+    <div class="persona" style="--c:var(--tertiary);--c2:#f6b483">
+      <div class="who"><span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a5 5 0 015 5v3a5 5 0 01-10 0V7a5 5 0 015-5z"/><path d="M4 22a8 8 0 0116 0"/></svg></span>관제사 <span style="font-size:11px;font-weight:600;color:#b5651d;background:#fff;border-radius:6px;padding:1px 6px;">내부</span></div>
+      <div class="role">뉴빌리티 관제 인원. 로봇 배차·경로·이상을 관제하고 필요 시 원격제어합니다.</div>
+      <div class="scr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>NCC — 모니터링 · 원격제어</div>
+    </div>
+  </div>
+</header>
+
+<div class="flowstrip">
+  <span class="fs" style="--c:var(--primary)"><span class="b">1</span>배달 요청</span>
+  <span class="arr">→</span>
+  <span class="fs" style="--c:var(--secondary)"><span class="b">2</span>접수 · 배차 · 경로</span>
+  <span class="arr">→</span>
+  <span class="fs" style="--c:var(--primary)"><span class="b">3</span>검체 적재</span>
+  <span class="arr">→</span>
+  <span class="fs" style="--c:var(--tertiary)"><span class="b">4</span>순차 배송(원격제어)</span>
+  <span class="arr">→</span>
+  <span class="fs" style="--c:var(--primary)"><span class="b">5</span>수령</span>
+</div>
+
+<main class="stage">
+
+  <!-- Phase 1 -->
+  <section class="phase" style="--c:var(--primary)">
+    <div class="phase-head">
+      <div class="pn">1</div>
+      <div class="pt">
+        <h2>배달 요청 — 다목적지 지정</h2>
+        <div class="goal">발송인이 뉴비오더 앱에서 출발 스테이션과 <b>여러 도착지 + 목적지별 받는 분</b>을 한 화면에서 입력하고 발송합니다.</div>
+        <div class="tags"><span class="ptag send"><span class="dot" style="background:var(--primary)"></span>발송인 · 뉴비오더</span></div>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="steps">
+        <div class="feat"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M6 17V9a4 4 0 014-4h4a4 4 0 014 4"/></svg></span>
+          <div class="ft"><b>신규 기능 — 다목적지</b> · 도착지를 여러 개 추가·삭제·순서변경(↕)하고, 지점마다 받는 분 정보를 함께 입력합니다.</div></div>
+        <ul class="steplist">
+          <li><span class="si">1</span><span class="st">타 부서로 보낼 검체 발생 인지</span></li>
+          <li><span class="si">2</span><span class="st">뉴비오더 앱 접속 · 문서 배달 선택</span></li>
+          <li><span class="si">3</span><span class="st">출발지(스테이션) 지정 · 보내는 분 입력</span></li>
+          <li><span class="si">4</span><span class="st">도착지 여러 곳 선택 · 순서 지정<span class="meta">경유 추가 / 삭제 / ↕ 순서변경</span></span></li>
+          <li><span class="si">5</span><span class="st">목적지별 받는 분(이름·연락처·메시지) 입력</span></li>
+          <li><span class="si">6</span><span class="st">문서 배달 보내기 → 요청 완료 확인</span></li>
+        </ul>
+      </div>
+      <div class="screens">
+        <div class="device dev-mobile">
+          <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="nm">뉴비오더 · 배달 요청</span>
+            <a class="open" href="document-delivery-mobile.html" target="_blank">열기<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+          <div class="frame"><iframe src="document-delivery-mobile.html?embed=1" loading="lazy"></iframe></div>
+          <div class="cap">출발+도착 통합 · 지점별 받는 분 입력</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Phase 2 -->
+  <section class="phase" style="--c:var(--secondary)">
+    <div class="phase-head">
+      <div class="pn">2</div>
+      <div class="pt">
+        <h2>접수 · 배차 · 경로 생성</h2>
+        <div class="goal">시스템이 다건 배달 경로를 만들어 로봇을 배차하고 출발지로 이동시킵니다. 관제사는 NCC 모니터링에서 임무를 확인하고, 관리인은 메인 페이지에서 현황을 봅니다.</div>
+        <div class="tags">
+          <span class="ptag sys"><span class="dot" style="background:var(--order)"></span>시스템 · 플랫폼</span>
+          <span class="ptag ops"><span class="dot" style="background:var(--tertiary)"></span>관제사 · NCC 모니터링</span>
+          <span class="ptag admin"><span class="dot" style="background:var(--secondary)"></span>관리인 · NCC 메인</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="steps">
+        <div class="feat" style="background:var(--secondary-50);border-color:#CFDBFF"><span class="fi" style="background:var(--secondary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg></span>
+          <div class="ft" style="color:var(--mono-700)"><b style="color:var(--secondary)">다건 배달 자동 경로화</b> · 여러 목적지를 최적 순서의 단일 임무로 묶어 배차합니다.</div></div>
+        <ul class="steplist">
+          <li><span class="si">1</span><span class="st">시스템 — 다건 배달 시나리오로 로봇 경로 생성</span></li>
+          <li><span class="si">2</span><span class="st">스테이션 인근 대기 로봇 배차 · 출발지로 이동</span></li>
+          <li><span class="si">3</span><span class="st">관제사 — NCC 모니터링에서 임무·로봇 상태 확인</span></li>
+          <li><span class="si">4</span><span class="st">관리인 — NCC 메인에서 배송 현황 조회</span></li>
+        </ul>
+      </div>
+      <div class="screens stack">
+        <div class="device dev-desk">
+          <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="nm">NCC · 모니터링 (관제사)</span>
+            <a class="open" href="monitoring-mockup.html" target="_blank">열기<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+          <div class="frame"><iframe src="monitoring-mockup.html" loading="lazy"></iframe></div>
+          <div class="cap">지도 · 로봇 목록 · 임무 설정(다목적지)</div>
+        </div>
+        <div class="device dev-desk">
+          <div class="bar" style="background:var(--secondary)"><span class="dots"><i></i><i></i><i></i></span><span class="nm">NCC · 메인 페이지 (관리인)</span></div>
+          <div class="placeholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+            <div class="pm">NCC 메인 — 운영 현황 대시보드</div>
+            <div class="ps">관리인용 읽기 전용 현황 화면 (별도 목업 예정)</div>
+          </div>
+          <div class="cap">고객사 관리인 진입 화면</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Phase 3 -->
+  <section class="phase" style="--c:var(--primary)">
+    <div class="phase-head">
+      <div class="pn">3</div>
+      <div class="pt">
+        <h2>검체 적재</h2>
+        <div class="goal">로봇이 출발지 스테이션에 도착하면 발송인에게 알림이 가고, 적재함이 자동으로 열려 검체를 싣습니다.</div>
+        <div class="tags">
+          <span class="ptag send"><span class="dot" style="background:var(--primary)"></span>발송인 · 뉴비오더</span>
+          <span class="ptag robot"><span class="dot" style="background:var(--mono-500)"></span>로봇 · 빌리</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="steps">
+        <div class="feat"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg></span>
+          <div class="ft"><b>도착 알림 · 적재함 원격 열림</b> · 이용내역 카드에서 상태를 확인하고 <b>적재함 열기</b>로 검체를 싣습니다.</div></div>
+        <ul class="steplist">
+          <li><span class="si">1</span><span class="st">시스템 — 로봇 출발지 도착 알림 발송</span></li>
+          <li><span class="si">2</span><span class="st">발송인 스테이션으로 이동</span></li>
+          <li><span class="si">3</span><span class="st">스테이션 문 · 적재함 자동 열림 확인<span class="meta">안 열릴 경우 운영 대응</span></span></li>
+          <li><span class="si">4</span><span class="st">검체 적재 후 적재함 닫기</span></li>
+        </ul>
+      </div>
+      <div class="screens">
+        <div class="device dev-mobile">
+          <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="nm">뉴비오더 · 이용내역</span>
+            <a class="open" href="document-delivery-mobile.html?screen=history" target="_blank">열기<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+          <div class="frame"><iframe src="document-delivery-mobile.html?embed=1&screen=history" loading="lazy"></iframe></div>
+          <div class="cap">진행 상태 · 적재함 열기</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Phase 4 -->
+  <section class="phase" style="--c:var(--tertiary)">
+    <div class="phase-head">
+      <div class="pn">4</div>
+      <div class="pt">
+        <h2>순차 배송 — 다구간 원격제어</h2>
+        <div class="goal">로봇이 출발해 목적지를 순서대로 방문합니다. 관제사는 NCC 원격제어에서 다구간 진행을 실시간으로 모니터링하고, 필요 시 개입합니다.</div>
+        <div class="tags">
+          <span class="ptag robot"><span class="dot" style="background:var(--mono-500)"></span>로봇 · 빌리</span>
+          <span class="ptag ops"><span class="dot" style="background:var(--tertiary)"></span>관제사 · NCC 원격제어</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="steps">
+        <div class="feat" style="background:var(--tertiary-50);border-color:#F6D6BC"><span class="fi" style="background:var(--tertiary)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><circle cx="18" cy="14" r="2"/><path d="M8 19h6a3 3 0 003-3M18 7v5M16 5H9"/></svg></span>
+          <div class="ft" style="color:var(--mono-700)"><b style="color:#b5651d">다구간 원격제어</b> · 구간별 스테퍼·진행 게이지·미니맵으로 순차 방문을 관제합니다.</div></div>
+        <ul class="steplist">
+          <li><span class="si">1</span><span class="st">로봇 출발 (스테이션 문 열림 → 주행)</span></li>
+          <li><span class="si">2</span><span class="st">목적지 1 → 2 → 3 순차 방문 · 구간별 도착</span></li>
+          <li><span class="si">3</span><span class="st">관제사 — 구간 진행·이상 모니터링, 필요 시 원격 개입</span></li>
+          <li><span class="si">4</span><span class="st">마지막 목적지 후 스테이션 복귀</span></li>
+        </ul>
+      </div>
+      <div class="screens">
+        <div class="device dev-desk">
+          <div class="bar" style="background:#3a2a17"><span class="dots"><i></i><i></i><i></i></span><span class="nm">NCC · 원격제어 (다구간)</span>
+            <a class="open" href="ncc-multi-destination.html?screen=remote" target="_blank">열기<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+          <div class="frame"><iframe src="ncc-multi-destination.html?screen=remote" loading="lazy"></iframe></div>
+          <div class="cap">다구간 스테퍼 · 실시간 위치 · 구간 진행</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Phase 5 -->
+  <section class="phase" style="--c:var(--primary)">
+    <div class="phase-head">
+      <div class="pn">5</div>
+      <div class="pt">
+        <h2>수령</h2>
+        <div class="goal">각 목적지에 도착하면 해당 수령자에게 알림이 가고, 적재함을 열어 검체를 수령합니다. 모든 목적지 완료 후 로봇은 복귀합니다.</div>
+        <div class="tags"><span class="ptag send"><span class="dot" style="background:var(--primary)"></span>수령자 · 뉴비오더</span></div>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="steps">
+        <div class="feat"><span class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg></span>
+          <div class="ft"><b>목적지별 수령 알림</b> · 각 지점 도착 시 그 목적지의 받는 분에게만 알림이 전달됩니다.</div></div>
+        <ul class="steplist">
+          <li><span class="si">1</span><span class="st">목적지 도착 → 수령자에게 도착 알림</span></li>
+          <li><span class="si">2</span><span class="st">수령자 적재함 열어 검체 수령</span></li>
+          <li><span class="si">3</span><span class="st">다음 목적지로 이동 · 반복</span></li>
+          <li><span class="si">4</span><span class="st">전체 완료 → 로봇 스테이션 복귀</span></li>
+        </ul>
+      </div>
+      <div class="screens">
+        <div class="device dev-mobile">
+          <div class="bar"><span class="dots"><i></i><i></i><i></i></span><span class="nm">뉴비오더 · 수령(이용내역)</span>
+            <a class="open" href="document-delivery-mobile.html?screen=history" target="_blank">열기<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M9 7h8v8"/></svg></a></div>
+          <div class="frame"><iframe src="document-delivery-mobile.html?embed=1&screen=history" loading="lazy"></iframe></div>
+          <div class="cap">구간별 배송 상태 · 수령</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <b>화면 매핑</b> — 발송인·수령자: <b>document-delivery-mobile.html</b> (뉴비오더) · 관제사: <b>monitoring-mockup.html</b> + <b>ncc-multi-destination.html</b> (모니터링·원격제어) · 관리인: NCC 메인(예정).<br/>
+  각 화면 카드의 “열기”로 전체 화면을 새 탭에서 확인할 수 있습니다. NCC 데모 화면은 별도 데모 사이트(성수동) 데이터를 사용합니다.
+</footer>
+
+</body>
+</html>

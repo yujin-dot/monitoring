@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>문서 배달 — 문자 링크로 적재함 열기</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+<style>
+  :root{
+    --primary:#00BA7C; --primary-100:#B0EAD6; --primary-50:#E6F8F2; --primary-700:#008458;
+    --secondary:#426CFF; --secondary-50:#ECF0FF;
+    --order:#00B2E3; --order-50:#E0F4FA;
+    --tertiary:#F8914A; --tertiary-50:#FFEDE4;
+    --red:#FA5952; --red-50:#FFEDEB;
+    --mono-900:#000; --mono-800:#262626; --mono-700:#434343; --mono-600:#555;
+    --mono-500:#7B7B7B; --mono-400:#9D9D9D; --mono-300:#C4C4C4; --mono-200:#D9D9D9;
+    --mono-100:#E9E9E9; --mono-50:#F5F5F5;
+    --r-s:8px; --r-m:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{font-family:Pretendard,-apple-system,system-ui,sans-serif;color:var(--mono-800);
+    -webkit-font-smoothing:antialiased;background:#3a3d42;
+    display:flex;align-items:flex-start;justify-content:center;gap:24px;padding:28px;min-height:100vh;}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* 데모 안내 */
+  .demo-aside{width:240px;flex:0 0 240px;color:#e8eaee;padding-top:8px;position:sticky;top:28px;}
+  .demo-aside h1{font-size:18px;font-weight:700;margin-bottom:6px;color:#fff;}
+  .demo-aside p{font-size:12px;line-height:1.7;color:#b6bac1;margin-bottom:16px;}
+  .demo-steps{display:flex;flex-direction:column;gap:4px;}
+  .demo-steps button{text-align:left;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:#cfd3da;
+    font-size:12.5px;padding:10px 12px;border-radius:8px;display:flex;align-items:center;gap:9px;transition:.15s;}
+  .demo-steps button:hover{background:rgba(255,255,255,.12);}
+  .demo-steps button.active{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600;}
+  .demo-steps button .n{width:20px;height:20px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:0 0 auto;}
+  .demo-note{margin-top:16px;font-size:11px;color:#9297a0;line-height:1.7;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;}
+  .demo-note b{color:var(--primary);}
+
+  /* 폰 */
+  .phone{width:375px;flex:0 0 375px;height:812px;background:#fff;border-radius:40px;
+    box-shadow:0 20px 60px rgba(0,0,0,.4);position:relative;overflow:hidden;border:10px solid #111;}
+  .screen{position:absolute;inset:0;display:none;flex-direction:column;background:#fff;}
+  .screen.show{display:flex;}
+  .statusbar{height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:space-between;padding:0 22px;font-size:14px;font-weight:600;z-index:20;}
+  .statusbar .icons{display:flex;align-items:center;gap:6px;}
+  .statusbar .icons svg{width:16px;height:16px;}
+  .indicator{height:22px;flex:0 0 22px;display:flex;align-items:center;justify-content:center;background:transparent;}
+  .indicator::after{content:"";width:134px;height:5px;border-radius:3px;background:var(--mono-800);opacity:.85;}
+
+  /* ===== 1) 문자(SMS) ===== */
+  #sms{background:#fff;}
+  .sms-nav{height:52px;flex:0 0 52px;display:flex;align-items:center;justify-content:center;position:relative;border-bottom:1px solid var(--mono-100);}
+  .sms-nav .back{position:absolute;left:12px;color:var(--secondary);display:flex;align-items:center;font-size:15px;}
+  .sms-nav .who{text-align:center;}
+  .sms-nav .who .nm{font-size:15px;font-weight:700;}
+  .sms-nav .who .sub{font-size:11px;color:var(--mono-400);}
+  .sms-body{flex:1;overflow-y:auto;background:#fff;padding:16px 16px 8px;display:flex;flex-direction:column;gap:6px;}
+  .sms-date{text-align:center;font-size:11px;color:var(--mono-400);margin:6px 0 10px;}
+  .sms-bubble{align-self:flex-start;max-width:86%;background:var(--mono-100);border-radius:4px 18px 18px 18px;padding:13px 15px;font-size:14px;line-height:1.6;color:var(--mono-800);}
+  .sms-bubble .brand{font-weight:700;}
+  .sms-bubble .lk{display:block;margin-top:8px;color:var(--secondary);text-decoration:underline;word-break:break-all;font-size:13px;}
+  .sms-time{align-self:flex-start;font-size:10px;color:var(--mono-400);margin:2px 2px 0;}
+  .sms-hint{margin:14px 16px;background:var(--secondary-50);border-radius:12px;padding:12px 14px;font-size:12px;color:var(--secondary);line-height:1.6;display:flex;gap:8px;align-items:flex-start;}
+  .sms-hint svg{width:16px;height:16px;flex:0 0 auto;margin-top:1px;}
+  .sms-inputbar{flex:0 0 auto;padding:8px 14px 6px;border-top:1px solid var(--mono-100);display:flex;align-items:center;gap:10px;}
+  .sms-inputbar .box{flex:1;height:38px;border:1px solid var(--mono-200);border-radius:19px;padding:0 14px;display:flex;align-items:center;color:var(--mono-400);font-size:13px;}
+
+  /* ===== 2) 적재함 열기 랜딩 (매직링크) ===== */
+  #landing{background:linear-gradient(180deg,#F1FBF7 0%,#fff 220px);}
+  .brandbar{height:52px;flex:0 0 52px;display:flex;align-items:center;gap:8px;padding:0 18px;}
+  .brandbar .logo{width:26px;height:26px;border-radius:8px;background:var(--primary);display:flex;align-items:center;justify-content:center;color:#fff;}
+  .brandbar .logo svg{width:16px;height:16px;}
+  .brandbar .bt{font-size:15px;font-weight:800;color:var(--mono-800);}
+  .brandbar .bt span{color:var(--primary);}
+  .brandbar .secure{margin-left:auto;font-size:11px;color:var(--mono-400);display:flex;align-items:center;gap:4px;}
+  .brandbar .secure svg{width:12px;height:12px;}
+
+  .land-body{flex:1;overflow-y:auto;padding:8px 20px 0;display:flex;flex-direction:column;}
+  .land-body::-webkit-scrollbar{width:0;}
+
+  /* 도착 히어로 */
+  .hero{text-align:center;padding:6px 0 14px;}
+  .hero .robot{width:132px;height:132px;margin:0 auto 4px;position:relative;}
+  .hero .ping{position:absolute;inset:6px;border-radius:50%;border:2px solid var(--primary);opacity:0;animation:ping 2s ease-out infinite;}
+  @keyframes ping{0%{transform:scale(.75);opacity:.5;}100%{transform:scale(1.15);opacity:0;}}
+  .hero h2{font-size:22px;font-weight:800;color:var(--mono-800);margin-top:6px;}
+  .hero .sub{font-size:13px;color:var(--mono-500);margin-top:6px;line-height:1.6;}
+  .hero .sub b{color:var(--primary-700);}
+
+  .info-card{background:#fff;border:1px solid var(--mono-100);border-radius:var(--r-m);box-shadow:0 2px 10px rgba(0,0,0,.04);padding:6px 16px;margin-top:14px;}
+  .info-row{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--mono-50);}
+  .info-row:last-child{border-bottom:0;}
+  .info-row .ic{width:34px;height:34px;flex:0 0 auto;border-radius:10px;background:var(--mono-50);display:flex;align-items:center;justify-content:center;color:var(--mono-500);}
+  .info-row .ic svg{width:18px;height:18px;}
+  .info-row .k{font-size:13px;color:var(--mono-500);}
+  .info-row .v{margin-left:auto;font-size:14px;font-weight:700;color:var(--mono-800);text-align:right;}
+  .info-row .v .box-badge{display:inline-flex;align-items:center;gap:5px;background:var(--primary-50);color:var(--primary-700);border-radius:999px;padding:3px 10px;font-size:13px;}
+
+  .verify-note{margin-top:14px;font-size:12px;color:var(--mono-500);background:var(--mono-50);border-radius:12px;padding:12px 14px;line-height:1.6;display:flex;gap:8px;align-items:flex-start;}
+  .verify-note svg{width:15px;height:15px;flex:0 0 auto;margin-top:1px;color:var(--mono-400);}
+
+  .land-cta{flex:0 0 auto;padding:14px 20px calc(14px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--mono-100);}
+  .land-cta .foothelp{text-align:center;font-size:12px;color:var(--mono-400);margin-bottom:10px;}
+  .bigbtn{width:100%;height:60px;border:0;border-radius:14px;background:var(--primary);color:#fff;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:9px;}
+  .bigbtn:active{background:var(--primary-700);}
+  .bigbtn svg{width:20px;height:20px;}
+  .bigbtn.gray{background:var(--mono-100);color:var(--mono-500);}
+  .bigbtn.outline{background:#fff;border:1.5px solid var(--mono-200);color:var(--mono-700);}
+
+  /* 열림/완료 상태 (오버레이형 전체 화면) */
+  .state-view{position:absolute;inset:0;background:#fff;display:none;flex-direction:column;z-index:15;}
+  .state-view.show{display:flex;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .sv-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:32px 28px;}
+  .sv-body .big-ic{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:22px;}
+  .sv-body .big-ic.green{background:var(--primary-50);color:var(--primary);}
+  .sv-body .big-ic svg{width:48px;height:48px;}
+  .sv-body h2{font-size:24px;font-weight:800;color:var(--mono-800);}
+  .sv-body p{font-size:14px;color:var(--mono-500);margin-top:10px;line-height:1.7;}
+  .sv-body p b{color:var(--mono-800);}
+  /* 스피너 */
+  .spinner{width:64px;height:64px;border-radius:50%;border:5px solid var(--primary-50);border-top-color:var(--primary);animation:spin .8s linear infinite;margin-bottom:22px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  /* 카운트다운 */
+  .timer{margin-top:20px;background:var(--tertiary-50);color:var(--tertiary);border-radius:12px;padding:11px 16px;font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:8px;}
+  .timer svg{width:15px;height:15px;}
+  .sv-cta{flex:0 0 auto;padding:14px 20px calc(14px + env(safe-area-inset-bottom));}
+
+  /* 로봇 SVG 헬퍼 */
+  .rb-hatch{animation:none;}
+</style>
+</head>
+<body>
+
+<aside class="demo-aside">
+  <h1>알림 미수신 → 문자 수령</h1>
+  <p>앱 알림을 못 받은 수령자에게 <b style="color:#fff">문자(SMS)</b>가 발송되고, 링크를 누르면 로그인 없이 <b style="color:#fff">적재함 열기</b> 페이지가 열립니다.</p>
+  <div class="demo-steps" id="demoSteps">
+    <button data-s="sms"><span class="n">1</span> 문자(SMS) 수신</button>
+    <button data-s="landing"><span class="n">2</span> 링크 → 적재함 열기</button>
+    <button data-s="done"><span class="n">3</span> 열림 · 수령 완료</button>
+  </div>
+  <div class="demo-note">
+    링크에는 1회용 토큰이 담겨 있어 별도 로그인 없이 <b>본인·해당 배송만</b> 열 수 있습니다.
+  </div>
+</aside>
+
+<div class="phone" id="phone">
+
+  <!-- 1) 문자(SMS) -->
+  <div class="screen show" id="sms">
+    <div class="statusbar"><span>9:41</span><span class="icons">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 20h3v-6H2v6zm5 0h3V8H7v12zm5 0h3V4h-3v16zm5 0h3v-9h-3v9z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 2.7 6 0 9l12 15L24 9c-2.7-3-7-5-12-5z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 10v4" stroke-linecap="round"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor"/></svg>
+    </span></div>
+    <div class="sms-nav">
+      <span class="back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg></span>
+      <div class="who"><div class="nm">1533-0000</div><div class="sub">문자 메시지</div></div>
+    </div>
+    <div class="sms-body">
+      <div class="sms-date">오늘 오후 3:52</div>
+      <div class="sms-bubble">
+        <span class="brand">[뉴비오더]</span> 문서 배달이 <b>연구센터 A동</b>에 도착했어요.<br/>
+        앱 알림을 못 받으셨다면 아래 링크에서 적재함을 열어 수령하세요.
+        <a class="lk" id="smsLink" href="javascript:void(0)">https://nbly.kr/p/8fK2x9</a>
+      </div>
+      <div class="sms-time">오후 3:52</div>
+      <div class="sms-hint">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        링크는 발송 후 <b style="margin:0 3px">30분</b> 동안만 유효하며, 본인에게만 발송됩니다.
+      </div>
+    </div>
+    <div class="sms-inputbar"><div class="box">문자 메시지</div>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--mono-300)"><circle cx="12" cy="12" r="12"/></svg>
+    </div>
+    <div class="indicator"></div>
+  </div>
+
+  <!-- 2) 적재함 열기 랜딩 -->
+  <div class="screen" id="landing">
+    <div class="statusbar"><span>9:41</span><span class="icons">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 20h3v-6H2v6zm5 0h3V8H7v12zm5 0h3V4h-3v16zm5 0h3v-9h-3v9z"/></svg>
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 2.7 6 0 9l12 15L24 9c-2.7-3-7-5-12-5z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 10v4" stroke-linecap="round"/><rect x="4" y="9" width="12" height="6" rx="1" fill="currentColor"/></svg>
+    </span></div>
+    <div class="brandbar">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 14h.01M15 14h.01"/></svg></span>
+      <span class="bt">뉴비<span>오더</span></span>
+      <span class="secure"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>보안 링크</span>
+    </div>
+
+    <div class="land-body">
+      <div class="hero">
+        <div class="robot">
+          <span class="ping"></span>
+          <svg viewBox="0 0 120 120" fill="none">
+            <ellipse cx="60" cy="108" rx="34" ry="6" fill="#000" opacity="0.06"/>
+            <rect x="26" y="30" width="68" height="66" rx="18" fill="#00BA7C"/>
+            <rect x="34" y="40" width="52" height="30" rx="10" fill="#0B1720"/>
+            <circle cx="50" cy="55" r="4.5" fill="#00BA7C"/><circle cx="70" cy="55" r="4.5" fill="#00BA7C"/>
+            <rect x="36" y="76" width="48" height="16" rx="6" fill="#fff" opacity=".9"/>
+            <rect x="41" y="81" width="38" height="6" rx="3" fill="#00BA7C" opacity=".5"/>
+            <rect x="52" y="16" width="16" height="12" rx="4" fill="#008458"/>
+            <circle cx="60" cy="13" r="4" fill="#33C896"/>
+            <rect x="20" y="60" width="8" height="20" rx="4" fill="#008458"/>
+            <rect x="92" y="60" width="8" height="20" rx="4" fill="#008458"/>
+          </svg>
+        </div>
+        <h2>뉴비가 도착했어요</h2>
+        <div class="sub">적재함을 열어 배달을 수령해 주세요.</div>
+      </div>
+
+      <div class="info-card">
+        <div class="info-row">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
+          <span class="k">도착 위치</span><span class="v">연구센터 A동</span>
+        </div>
+        <div class="info-row">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>
+          <span class="k">도착 시각</span><span class="v">오후 3:52</span>
+        </div>
+        <div class="info-row">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4M9 14h.01M15 14h.01"/></svg></span>
+          <span class="k">로봇</span><span class="v"><span class="box-badge">NB-12</span></span>
+        </div>
+      </div>
+
+      <div class="verify-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+        이 링크는 <b style="color:var(--mono-700)">수령자 본인</b>에게만 발송되었습니다. 적재함은 로봇 앞에서 열어 주세요.
+      </div>
+      <div style="height:12px"></div>
+    </div>
+
+    <div class="land-cta">
+      <div class="foothelp">로봇 앞에 도착한 뒤 눌러 주세요</div>
+      <button class="bigbtn" id="openBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0"/></svg>
+        적재함 열기
+      </button>
+    </div>
+    <div class="indicator"></div>
+
+    <!-- 여는 중 -->
+    <div class="state-view" id="svOpening">
+      <div class="statusbar"><span>9:41</span><span class="icons"></span></div>
+      <div class="sv-body">
+        <div class="spinner"></div>
+        <h2>적재함을 여는 중…</h2>
+        <p>로봇과 통신하고 있어요.<br/>잠시만 기다려 주세요.</p>
+      </div>
+    </div>
+
+    <!-- 열림 -->
+    <div class="state-view" id="svOpened">
+      <div class="statusbar"><span>9:41</span><span class="icons"></span></div>
+      <div class="sv-body">
+        <div class="big-ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 014-4 4 4 0 013.5 2"/></svg></div>
+        <h2>적재함이 열렸어요</h2>
+        <p><b>문서를 꺼낸 뒤</b> 적재함 문을 닫아 주세요.<br/>다 꺼내셨으면 아래 버튼을 눌러 주세요.</p>
+        <div class="timer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg><span id="countdown">03:00</span> 후 자동으로 닫힙니다</div>
+      </div>
+      <div class="sv-cta"><button class="bigbtn" id="doneBtn">수령 완료</button></div>
+      <div class="indicator"></div>
+    </div>
+
+    <!-- 완료 -->
+    <div class="state-view" id="svDone">
+      <div class="statusbar"><span>9:41</span><span class="icons"></span></div>
+      <div class="sv-body">
+        <div class="big-ic green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>
+        <h2>수령이 완료되었어요</h2>
+        <p>이용해 주셔서 감사합니다.<br/>뉴비는 다음 목적지로 이동합니다.</p>
+      </div>
+      <div class="sv-cta"><button class="bigbtn outline" id="closeBtn">닫기</button></div>
+      <div class="indicator"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function go(name){
+    document.querySelectorAll(".screen").forEach(s=>s.classList.remove("show"));
+    document.getElementById(name==="done"?"landing":name).classList.add("show");
+    document.querySelectorAll("#demoSteps button").forEach(b=>b.classList.toggle("active", b.dataset.s===name));
+    if(name==="landing") setState("ready");
+    if(name==="done") setState("done");
+    if(name==="sms") setState("ready");
+  }
+  document.querySelectorAll("#demoSteps button").forEach(b=> b.onclick=()=>go(b.dataset.s));
+
+  // 문자 링크 → 랜딩
+  document.getElementById("smsLink").onclick=()=>go("landing");
+
+  // 적재함 열기 상태 머신
+  let cdTimer=null;
+  function hideStates(){ ["svOpening","svOpened","svDone"].forEach(id=>document.getElementById(id).classList.remove("show")); }
+  function setState(s){
+    hideStates(); clearInterval(cdTimer);
+    if(s==="ready") return;
+    if(s==="opening"){ document.getElementById("svOpening").classList.add("show"); }
+    if(s==="opened"){ document.getElementById("svOpened").classList.add("show"); startCountdown(180); }
+    if(s==="done"){ document.getElementById("svDone").classList.add("show"); }
+  }
+  function startCountdown(sec){
+    const el=document.getElementById("countdown");
+    const paint=()=>{ const m=String(Math.floor(sec/60)).padStart(2,"0"), s=String(sec%60).padStart(2,"0"); el.textContent=`${m}:${s}`; };
+    paint();
+    cdTimer=setInterval(()=>{ sec--; if(sec<0){ clearInterval(cdTimer); return; } paint(); }, 1000);
+  }
+
+  document.getElementById("openBtn").onclick=()=>{ setState("opening"); setTimeout(()=>setState("opened"), 1500); };
+  document.getElementById("doneBtn").onclick=()=>setState("done");
+  document.getElementById("closeBtn").onclick=()=>go("sms");
+</script>
+</body>
+</html>
